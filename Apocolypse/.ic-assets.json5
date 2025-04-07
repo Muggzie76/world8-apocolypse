@@ -1,0 +1,14 @@
+[
+  {
+    "match": "**/*",
+    "security_policy": "standard"
+  },
+  {
+    "match": "**/*.wav",
+    "allow_raw_access": true
+  }
+]
+
+{
+  "disable_security_policy_warning": true
+} 
