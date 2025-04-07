@@ -1,0 +1,22 @@
+{
+  "canisters": {
+    "world8_apocalypse": {
+      "frontend": {
+        "entrypoint": "missile-command-wallet.html"
+      },
+      "source": ["./"],
+      "type": "assets"
+    },
+    "world8_backend": {
+      "main": "src/world8_apocalypse/main.mo",
+      "type": "motoko"
+    }
+  },
+  "defaults": {
+    "build": {
+      "args": "",
+      "packtool": ""
+    }
+  },
+  "version": 1
+} 

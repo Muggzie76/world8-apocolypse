@@ -1,0 +1,12 @@
+type HighScore = record {
+  player : text;
+  score : nat;
+  level : nat;
+  timestamp : int;
+};
+
+service : {
+  addHighScore : (text, nat, nat) -> (nat);
+  getHighScores : () -> (vec HighScore) query;
+  clearHighScores : () -> ();
+} 

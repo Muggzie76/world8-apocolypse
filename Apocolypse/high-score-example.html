@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WORLD 8 APOCALYPSE - High Score Example</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: black;
+            color: white;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 {
+            color: #0f0;
+            text-align: center;
+        }
+        .game-container {
+            width: 100%;
+            max-width: 800px;
+            margin: 20px auto;
+            text-align: center;
+        }
+        .high-scores {
+            width: 100%;
+            max-width: 800px;
+            margin: 20px auto;
+        }
+        .high-score-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .high-score-table th, .high-score-table td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #333;
+        }
+        .high-score-table th {
+            background-color: #222;
+            color: #0f0;
+        }
+        .high-score-table tr:nth-child(even) {
+            background-color: #111;
+        }
+        .button {
+            background-color: #0f0;
+            color: black;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            margin: 10px;
+            font-weight: bold;
+        }
+        .button:hover {
+            background-color: #00ff00;
+        }
+        .input-group {
+            margin: 20px 0;
+        }
+        input {
+            padding: 10px;
+            width: 200px;
+            margin-right: 10px;
+        }
+        .status {
+            color: #0f0;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>WORLD 8 APOCALYPSE</h1>
+    <h2>High Score System Example</h2>
+
+    <div class="game-container">
+        <div class="input-group">
+            <input type="text" id="playerName" placeholder="Enter your name">
+            <input type="number" id="playerScore" placeholder="Score">
+            <input type="number" id="playerLevel" placeholder="Level">
+            <button class="button" id="submitScore">Submit Score</button>
+        </div>
+
+        <div class="status" id="status"></div>
+
+        <button class="button" id="connectWallet">Connect Wallet</button>
+        <button class="button" id="getHighScores">Load High Scores</button>
+        
+        <div class="wallet-status" id="walletStatus">Wallet: Not Connected</div>
+    </div>
+
+    <div class="high-scores" id="highScoreContainer">
+        <h3>High Scores</h3>
+        <div id="highScores"></div>
+    </div>
+
+    <!-- Mock Plug Wallet SDK for testing -->
+    <script>
+        window.ic = {
+            plug: {
+                isConnected: false,
+                requestConnect: async function() {
+                    // Simulate connecting to wallet
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    this.isConnected = true;
+                    return true;
+                },
+                createActor: async function() {
+                    // Mock implementation
+                    return true;
+                }
+            },
+            agent: {
+                Actor: {
+                    createActor: async function() {
+                        // Return a mock actor
+                        return {
+                            addHighScore: async function(name, score, level) {
+                                console.log("Adding score:", name, score, level);
+                                return 1; // Simulate success
+                            },
+                            getHighScores: async function() {
+                                // Return mock high scores
+                                return [
+                                    {
+                                        player: "Player1",
+                                        score: BigInt(5000),
+                                        level: BigInt(5),
+                                        timestamp: BigInt(Date.now() * 1000000)
+                                    },
+                                    {
+                                        player: "Player2",
+                                        score: BigInt(4500),
+                                        level: BigInt(4),
+                                        timestamp: BigInt(Date.now() * 1000000 - 86400000000000)
+                                    },
+                                    {
+                                        player: "Player3",
+                                        score: BigInt(4000),
+                                        level: BigInt(3),
+                                        timestamp: BigInt(Date.now() * 1000000 - 172800000000000)
+                                    }
+                                ];
+                            }
+                        };
+                    }
+                }
+            }
+        };
+    </script>
+
+    <!-- High Score System Integration -->
+    <script src="high-score-integration.js"></script>
+
+    <!-- Main script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const statusElement = document.getElementById('status');
+            const walletStatusElement = document.getElementById('walletStatus');
+            const connectWalletButton = document.getElementById('connectWallet');
+            const getHighScoresButton = document.getElementById('getHighScores');
+            const submitScoreButton = document.getElementById('submitScore');
+            const playerNameInput = document.getElementById('playerName');
+            const playerScoreInput = document.getElementById('playerScore');
+            const playerLevelInput = document.getElementById('playerLevel');
+
+            // For demo purposes, use a mock canister ID
+            const mockCanisterId = "rrkah-fqaaa-aaaaa-aaaaq-cai";
+
+            // Initialize the high score system
+            highScoreSystem.init(true, mockCanisterId);
+
+            // Connect wallet button handler
+            connectWalletButton.addEventListener('click', async function() {
+                statusElement.textContent = "Connecting to wallet...";
+                try {
+                    await window.ic.plug.requestConnect();
+                    walletStatusElement.textContent = "Wallet: Connected";
+                    statusElement.textContent = "Wallet connected successfully!";
+                } catch (error) {
+                    statusElement.textContent = "Failed to connect wallet: " + error.message;
+                }
+            });
+
+            // Get high scores button handler
+            getHighScoresButton.addEventListener('click', async function() {
+                statusElement.textContent = "Loading high scores...";
+                try {
+                    const highScores = await highScoreSystem.get();
+                    highScoreSystem.render(highScores, 'highScores');
+                    statusElement.textContent = "High scores loaded successfully!";
+                } catch (error) {
+                    statusElement.textContent = "Failed to load high scores: " + error.message;
+                }
+            });
+
+            // Submit score button handler
+            submitScoreButton.addEventListener('click', async function() {
+                const playerName = playerNameInput.value;
+                const playerScore = parseInt(playerScoreInput.value, 10);
+                const playerLevel = parseInt(playerLevelInput.value, 10);
+
+                if (!playerName) {
+                    statusElement.textContent = "Please enter a player name";
+                    return;
+                }
+
+                if (isNaN(playerScore) || playerScore <= 0) {
+                    statusElement.textContent = "Please enter a valid score";
+                    return;
+                }
+
+                if (isNaN(playerLevel) || playerLevel <= 0) {
+                    statusElement.textContent = "Please enter a valid level";
+                    return;
+                }
+
+                statusElement.textContent = "Submitting score...";
+                try {
+                    await highScoreSystem.submit(playerName, playerScore, playerLevel);
+                    statusElement.textContent = "Score submitted successfully!";
+                    
+                    // Refresh high scores
+                    const highScores = await highScoreSystem.get();
+                    highScoreSystem.render(highScores, 'highScores');
+                } catch (error) {
+                    statusElement.textContent = "Failed to submit score: " + error.message;
+                }
+            });
+
+            // Load initial high scores
+            getHighScoresButton.click();
+        });
+    </script>
+</body>
+</html> 

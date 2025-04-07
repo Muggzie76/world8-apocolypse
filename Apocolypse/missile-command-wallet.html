@@ -1,0 +1,1518 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>WORLD 8 Apocalypse</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Include Plug Wallet SDK via CDN -->
+  <script src="https://plugwallet.ooo/plug-wallet.js"></script>
+  <style>
+  html, body {
+    height: 100%;
+    margin: 0;
+    font-family: Arial, sans-serif;
+  }
+
+  body {
+    background: black;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+  }
+
+  #background-city {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 150px;
+    z-index: 0;
+    opacity: 0.25;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  canvas {
+    cursor: crosshair;
+    position: relative;
+    z-index: 1;
+  }
+
+  #title {
+    font-size: 60px;
+    color: white;
+    margin-bottom: 30px;
+    animation: flash 1s infinite;
+    text-align: center;
+  }
+
+  @keyframes flash {
+    0%, 49% { color: white; }
+    50%, 100% { color: #ff0000; }
+  }
+
+  #start-button, #restart-button {
+    margin-top: 20px;
+    padding: 10px 20px;
+    font-size: 18px;
+    cursor: pointer;
+    background-color: #ffff00; /* Neon yellow */
+    color: black;
+    border: none;
+    border-radius: 5px;
+    font-weight: bold;
+    box-shadow: 0 0 15px #ffff00; /* Neon glow effect */
+    transition: all 0.2s ease;
+  }
+
+  #start-button:hover, #restart-button:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 25px #ffff00;
+  }
+
+  #restart-button {
+    margin-top: 20px;
+    padding: 10px 20px;
+    font-size: 18px;
+    cursor: pointer;
+    display: none;
+  }
+
+  #score-display, #level-display {
+    color: white;
+    font-size: 18px;
+    position: absolute;
+    z-index: 10;
+  }
+
+  #score-display {
+    left: 20px;
+    top: 20px;
+  }
+
+  #level-display {
+    right: 20px;
+    top: 20px;
+  }
+
+  #missile-availability {
+    position: absolute;
+    top: 50px;
+    left: 20px;
+    z-index: 10;
+  }
+
+  #missile-indicator {
+    display: flex;
+    gap: 5px;
+  }
+
+  .missile-dot {
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+  }
+
+  #silo-indicator {
+    margin-top: 10px;
+    display: flex;
+    gap: 20px;
+  }
+
+  .silo-display {
+    color: white;
+    font-size: 14px;
+  }
+
+  #title-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10;
+  }
+
+  #game-over {
+    position: absolute;
+    color: red;
+    font-size: 48px;
+    text-align: center;
+    display: none;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+    text-shadow: 0 0 15px #ff0000;
+  }
+
+  .hidden {
+    display: none !important;
+  }
+
+  #game-over-popup {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+  }
+
+  #game-over-popup-content {
+    background-color: #000;
+    border: 5px solid #ff0000;
+    padding: 30px;
+    text-align: center;
+    box-shadow: 0 0 30px #ff0000;
+    animation: pulseBorder 1s infinite alternate;
+  }
+
+  #game-over-popup-text {
+    color: #ff0000;
+    font-size: 72px;
+    font-weight: bold;
+    text-shadow: 0 0 20px #ff0000;
+    margin-bottom: 30px;
+    animation: pulseText 0.5s infinite alternate;
+  }
+
+  #game-over-popup-button {
+    background-color: #ffff00;
+    color: #000;
+    border: none;
+    padding: 15px 30px;
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 0 20px #ffff00;
+    transition: all 0.3s;
+  }
+
+  #game-over-popup-button:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 30px #ffff00;
+  }
+
+  @keyframes pulseBorder {
+    from { box-shadow: 0 0 30px #ff0000; }
+    to { box-shadow: 0 0 60px #ff0000; }
+  }
+
+  @keyframes pulseText {
+    from { text-shadow: 0 0 20px #ff0000; }
+    to { text-shadow: 0 0 40px #ff0000; }
+  }
+
+  /* Payment related styles */
+  #payment-info {
+    position: absolute;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: white;
+    font-size: 18px;
+    z-index: 10;
+    background-color: rgba(0, 0, 0, 0.7);
+    padding: 10px 15px;
+    border-radius: 5px;
+    border: 1px solid #333;
+  }
+
+  #wallet-button {
+    margin-top: 10px;
+    padding: 8px 15px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.3s;
+  }
+
+  #wallet-button:hover {
+    background-color: #45a049;
+    transform: scale(1.05);
+  }
+
+  .payment-success {
+    color: #4CAF50;
+    font-weight: bold;
+    margin-top: 10px;
+    animation: fadeInOut 2s forwards;
+  }
+
+  @keyframes fadeInOut {
+    0% { opacity: 0; }
+    20% { opacity: 1; }
+    80% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+  </style>
+</head>
+<body>
+<div id="background-city"></div>
+<div id="title-screen">
+  <div id="title">WORLD 8<br>APOCALYPSE</div>
+  <div id="payment-info">Cost to play: 0.01 ICP</div>
+  <button id="wallet-button">Connect Wallet</button>
+  <button id="start-button" disabled>START GAME</button>
+</div>
+<div id="score-display" class="hidden">Score: 0</div>
+<div id="missile-availability" class="hidden">
+  <div id="missile-indicator"></div>
+  <div id="silo-indicator"></div>
+</div>
+<div id="level-display" class="hidden"></div>
+<canvas width="800" height="550" id="game" class="hidden"></canvas>
+<div id="game-over" class="hidden">
+  GAME OVER GEEZER<br>
+  <button id="restart-button">Play Again</button>
+</div>
+<div id="game-over-popup">
+  <div id="game-over-popup-content">
+    <div id="game-over-popup-text">GAME OVER GEEZER!!</div>
+    <button id="game-over-popup-button">PLAY AGAIN</button>
+  </div>
+</div>
+<script>
+// Game state constants
+const GAME_STATES = {
+  TITLE: 'TITLE',
+  PLAYING: 'PLAYING',
+  GAME_OVER: 'GAME_OVER'
+};
+let currentState = GAME_STATES.TITLE;
+
+// Game state variables
+let score = 0;
+let gameOver = false;
+let activeCounterMissiles = 0;
+const MAX_COUNTER_MISSILES = 3;
+let lastTime = 0;
+let currInterval = 0;
+let deltaTime = 0;
+let missileSpawnTimer = 0;
+
+// Plug Wallet Integration
+const GAME_WALLET_PID = 'ld5uj-tgxfi-jgmdx-ikekg-uu62k-dhhrf-s6jav-3sdbh-4yamx-yzwrs-pqe';
+const ICP_FEE = 0.01; // 0.01 ICP fee to play
+let walletConnected = false;
+
+// Check if Plug Wallet is installed
+async function checkPlugWallet() {
+  if (!window.ic?.plug) {
+    alert("Please install the Plug Wallet extension to play this game. Visit https://plugwallet.ooo/ to download.");
+    return false;
+  }
+  return true;
+}
+
+// Connect to Plug Wallet
+async function connectPlugWallet() {
+  try {
+    const isAvailable = await checkPlugWallet();
+    if (!isAvailable) return false;
+
+    const connected = await window.ic.plug.requestConnect({
+      whitelist: [], // Add your canister ID if you deploy this as a dApp
+    });
+
+    if (connected) {
+      console.log("Connected to Plug Wallet!");
+      walletConnected = true;
+      document.getElementById('wallet-button').textContent = "Wallet Connected";
+      document.getElementById('wallet-button').style.backgroundColor = "#45a049";
+      document.getElementById('start-button').disabled = false;
+      return true;
+    }
+    return false;
+  } catch (error) {
+    console.error("Failed to connect to Plug Wallet:", error);
+    return false;
+  }
+}
+
+// Request payment from user
+async function requestPayment() {
+  try {
+    // Check if wallet is connected
+    if (!walletConnected) {
+      const connected = await connectPlugWallet();
+      if (!connected) {
+        alert("Please connect your wallet to play.");
+        return false;
+      }
+    }
+
+    // Check balance
+    const balance = await window.ic.plug.requestBalance();
+    const icpBalance = balance.find(b => b.symbol === 'ICP')?.amount || 0;
+    
+    if (parseFloat(icpBalance) < ICP_FEE) {
+      alert(`Insufficient ICP balance. You need at least ${ICP_FEE} ICP to play.`);
+      return false;
+    }
+
+    // Request payment transfer
+    const result = await window.ic.plug.requestTransfer({
+      to: GAME_WALLET_PID,
+      amount: ICP_FEE * 100000000, // Convert to e8s (ICP uses 10^8 precision)
+      memo: Date.now().toString(), // Use timestamp as memo
+    });
+
+    if (result) {
+      console.log("Payment successful! Transferred", ICP_FEE, "ICP to", GAME_WALLET_PID);
+      
+      // Show success message
+      const successMsg = document.createElement('div');
+      successMsg.className = 'payment-success';
+      successMsg.textContent = `Payment of ${ICP_FEE} ICP successful!`;
+      document.getElementById('title-screen').appendChild(successMsg);
+      
+      // Remove message after animation completes
+      setTimeout(() => {
+        if (successMsg.parentNode) {
+          successMsg.parentNode.removeChild(successMsg);
+        }
+      }, 2000);
+      
+      return true;
+    }
+    return false;
+  } catch (error) {
+    console.error("Payment failed:", error);
+    alert("Payment failed: " + error.message);
+    return false;
+  }
+}
+
+// Constants
+const canvas = document.getElementById('game');
+const context = canvas.getContext('2d');
+const groundY = 500;
+const cityWidth = 45;
+const cityHeight = 25;
+const cityY = groundY - cityHeight;
+const siloY = groundY - 30;
+const missileSize = 4;
+const siloPos = [55, canvas.width / 2, 745];
+const counterMissileSpeed = 15;
+
+// Object pools for better memory management
+const missilePool = [];
+const counterMissilePool = [];
+const explosionPool = [];
+
+// Level configuration
+const LEVELS = [
+  {
+    name: "Level 1 - The Beginning",
+    missileSpeed: 0.5,  // Slower starting speed
+    missileCount: [3, 3],  // Fewer missiles to start
+    interval: 4000,  // Longer interval between waves
+    color: '#0000ff'
+  },
+  {
+    name: "Level 2 - Rising Threat",
+    missileSpeed: 0.7,
+    missileCount: [4, 4],
+    interval: 3500,
+    color: '#00ff00'
+  },
+  {
+    name: "Level 3 - Intensified",
+    missileSpeed: 0.9,
+    missileCount: [5, 5],
+    interval: 3000,
+    color: '#ffff00'
+  },
+  {
+    name: "Level 4 - Critical Mass",
+    missileSpeed: 1.1,
+    missileCount: [6, 6],
+    interval: 2500,
+    color: '#ff6600'
+  },
+  {
+    name: "Level 5 - Apocalypse",
+    missileSpeed: 1.3,
+    missileCount: [7, 7],
+    interval: 2000,
+    color: '#ff0000'
+  }
+];
+
+let currentLevel = 0;
+let levelComplete = false;
+let levelStartTime = 0;
+
+// Original city and silo configurations for reset
+const ORIGINAL_CITIES = [
+  { x: 140, y: cityY, alive: true, health: 3 },
+  { x: 220, y: cityY, alive: true, health: 3 },
+  { x: 300, y: cityY, alive: true, health: 3 },
+  { x: 500, y: cityY, alive: true, health: 3 },
+  { x: 580, y: cityY, alive: true, health: 3 },
+  { x: 660, y: cityY, alive: true, health: 3 }
+];
+
+const ORIGINAL_SILOS = [
+  { x: siloPos[0], y: siloY, missiles: 10, alive: true },
+  { x: siloPos[1], y: siloY, missiles: 10, alive: true },
+  { x: siloPos[2], y: siloY, missiles: 10, alive: true }
+];
+
+// Active game objects
+let cities = [];
+let silos = [];
+let missiles = [];
+let counterMissiles = [];
+let explosions = [];
+let missileSpawns = [];
+
+// Difficulty scaling
+let difficultyMultiplier = 1.0;
+let baseSpeed = [];
+
+// Bonus targets
+const BONUS_TARGETS = {
+  UFO: {
+    points: 100,
+    color: '#00ff00',
+    size: 20,
+    speed: 2,
+    spawnChance: 0.01
+  },
+  SATELITE: {
+    points: 200,
+    color: '#ff00ff',
+    size: 15,
+    speed: 3,
+    spawnChance: 0.005
+  }
+};
+
+let bonusTargets = [];
+let bonusTargetSpawnTimer = 0;
+const BONUS_TARGET_SPAWN_INTERVAL = 10000; // 10 seconds
+
+// Initialize game objects
+function initializeGameObjects() {
+  // Reset cities and silos from originals
+  cities = JSON.parse(JSON.stringify(ORIGINAL_CITIES));
+  silos = JSON.parse(JSON.stringify(ORIGINAL_SILOS));
+  
+  // Initialize missile spawns
+  missileSpawns = [];
+  cities.concat(silos).forEach(obj => {
+    missileSpawns.push({ x: obj.x, y: 0 });
+  });
+  // Add edge spawns
+  missileSpawns.push({ x: 0, y: 0 }, { x: canvas.width, y: 0 });
+  
+  // Clear game object arrays
+  missiles = [];
+  counterMissiles = [];
+  explosions = [];
+  bonusTargets = [];
+  bonusTargetSpawnTimer = 0;
+}
+
+// Helper function to get object from pool or create new one
+function getPooledObject(pool, createFn) {
+  return pool.length > 0 ? pool.pop() : createFn();
+}
+
+// Game state management
+function updateGameState(newState) {
+  currentState = newState;
+  
+  // Update UI based on state
+  if (newState === GAME_STATES.TITLE) {
+    document.getElementById('title-screen').style.display = 'flex';
+    document.getElementById('game').classList.add('hidden');
+    document.getElementById('score-display').classList.add('hidden');
+    document.getElementById('missile-availability').classList.add('hidden');
+    document.getElementById('level-display').classList.add('hidden');
+    document.getElementById('game-over').style.display = 'none';
+    document.getElementById('game-over-popup').style.display = 'none';
+    
+    // Only enable the start button if wallet is connected
+    document.getElementById('start-button').disabled = !walletConnected;
+    document.getElementById('payment-info').style.display = 'block';
+    document.getElementById('wallet-button').style.display = 'block';
+  } else if (newState === GAME_STATES.PLAYING) {
+    document.getElementById('title-screen').style.display = 'none';
+    document.getElementById('game').classList.remove('hidden');
+    document.getElementById('score-display').classList.remove('hidden');
+    document.getElementById('missile-availability').classList.remove('hidden');
+    document.getElementById('level-display').classList.remove('hidden');
+    document.getElementById('game-over').style.display = 'none';
+    document.getElementById('game-over-popup').style.display = 'none';
+  } else if (newState === GAME_STATES.GAME_OVER) {
+    document.getElementById('title-screen').style.display = 'none';
+    document.getElementById('game').classList.remove('hidden');
+    document.getElementById('score-display').classList.remove('hidden');
+    document.getElementById('missile-availability').classList.remove('hidden');
+    document.getElementById('level-display').classList.remove('hidden');
+    document.getElementById('game-over').style.display = 'block';
+  }
+}
+
+// Update level display
+function updateLevelDisplay() {
+  const levelDisplay = document.getElementById('level-display');
+  if (!levelDisplay) return; // Guard against null element
+  
+  const level = LEVELS[currentLevel];
+  levelDisplay.textContent = level.name;
+  levelDisplay.style.color = level.color;
+}
+
+// Update missile availability indicators
+function updateMissileAvailability() {
+  const indicator = document.getElementById('missile-indicator');
+  if (!indicator) return; // Guard against null element
+  
+  indicator.innerHTML = '';
+  
+  for (let i = 0; i < MAX_COUNTER_MISSILES; i++) {
+    const dot = document.createElement('div');
+    dot.className = 'missile-dot';
+    dot.style.backgroundColor = (i < MAX_COUNTER_MISSILES - activeCounterMissiles) ? '#00ff00' : '#ff0000';
+    indicator.appendChild(dot);
+  }
+  
+  // Update silo indicators
+  const siloIndicator = document.getElementById('silo-indicator');
+  if (!siloIndicator) return; // Guard against null element
+  
+  siloIndicator.innerHTML = '';
+  
+  silos.forEach(silo => {
+    if (silo.alive) {
+      const siloDisplay = document.createElement('div');
+      siloDisplay.className = 'silo-display';
+      
+      const count = document.createElement('span');
+      count.textContent = silo.missiles;
+      count.style.color = silo.missiles > 0 ? '#00ff00' : '#ff0000';
+      
+      siloDisplay.appendChild(count);
+      siloIndicator.appendChild(siloDisplay);
+    }
+  });
+}
+
+// Draw cities with health indicators
+function drawCities() {
+  context.fillStyle = '#ffff00';
+
+  cities.forEach(city => {
+    if (city.alive) {
+      context.fillRect(city.x - cityWidth / 2, city.y, cityWidth, cityHeight);
+
+      // Draw health indicators
+      const healthBarWidth = 10;
+      const healthBarHeight = 3;
+      const healthBarSpacing = 2;
+      const startX = city.x - (healthBarWidth * city.health + healthBarSpacing * (city.health - 1)) / 2;
+
+      for (let i = 0; i < city.health; i++) {
+        context.fillStyle = i < city.health ? '#00ff00' : '#ff0000';
+        context.fillRect(
+          startX + i * (healthBarWidth + healthBarSpacing),
+          city.y - healthBarHeight - 2,
+          healthBarWidth,
+          healthBarHeight
+        );
+      }
+      
+      context.fillStyle = '#ffff00';
+    }
+  });
+}
+
+// Draw ground and silos
+function drawGroundAndSilos() {
+  // draw the ground
+  context.fillStyle = '#ffff00';
+  context.fillRect(0, groundY, canvas.width, canvas.height - groundY);
+
+  // draw the silos
+  silos.forEach(silo => {
+    if (silo.alive) {
+      // Draw silo
+      context.beginPath();
+      context.moveTo(silo.x, silo.y);
+      context.lineTo(silo.x - 10, silo.y + 30);
+      context.lineTo(silo.x + 10, silo.y + 30);
+      context.fillStyle = '#ffff00';
+      context.fill();
+      
+      // Draw missile count below silo
+      context.fillStyle = silo.missiles > 0 ? '#00ff00' : '#ff0000';
+      context.font = '14px Arial';
+      context.textAlign = 'center';
+      context.fillText(silo.missiles, silo.x, silo.y + 50);
+    }
+  });
+}
+
+// Utility function to get random integer in range
+function randInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+// Utility function to get distance between points
+function distance(p1, p2) {
+  return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+}
+
+// Utility function to get angle between points
+function angleBetweenPoints(p1, p2) {
+  return Math.atan2(p2.y - p1.y, p2.x - p1.x);
+}
+
+// Spawn a missile using object pooling
+function spawnMissile() {
+  const targets = cities.concat(silos).filter(t => t.alive);
+  if (targets.length === 0) return;
+
+  const level = LEVELS[currentLevel];
+  const randSpawn = randInt(0, missileSpawns.length - 1);
+  const randTarget = randInt(0, targets.length - 1);
+  const start = missileSpawns[randSpawn];
+  const target = targets[randTarget];
+  
+  // Calculate angle properly - direction from start to target
+  const dx = target.x - start.x;
+  const dy = target.y - start.y;
+  const distance = Math.sqrt(dx * dx + dy * dy);
+  
+  // Get missile from pool or create new
+  const missile = getPooledObject(missilePool, () => ({}));
+  Object.assign(missile, {
+    start: { x: start.x, y: start.y },
+    target: target,
+    pos: { x: start.x, y: start.y },
+    alive: true,
+    // Normalize the velocity vector and scale by speed
+    dx: (dx / distance) * level.missileSpeed * difficultyMultiplier,
+    dy: (dy / distance) * level.missileSpeed * difficultyMultiplier
+  });
+
+  missiles.push(missile);
+}
+
+// Update and draw missiles
+function updateAndDrawMissiles(time) {
+  context.strokeStyle = 'red';
+  context.lineWidth = 2;
+
+  // update color based on time so it "blinks"
+  // by dividing by a number and seeing if it's odd or even we can
+  // change the speed of the blinking
+  context.fillStyle = 'white';
+  if (Math.round(time / 2) % 2 === 0) {
+    context.fillStyle = 'black';
+  }
+
+  // Process each missile
+  for (let i = missiles.length - 1; i >= 0; i--) {
+    const missile = missiles[i];
+    missile.pos.x += missile.dx;
+    missile.pos.y += missile.dy;
+
+    // Check for explosion collisions
+    let destroyed = false;
+    for (let j = explosions.length - 1; j >= 0; j--) {
+      const explosion = explosions[j];
+      const dist = distance(explosion, missile.pos);
+      if (dist < missileSize + explosion.size) {
+        missile.alive = false;
+        destroyed = true;
+        updateScore(25);
+        break;
+      }
+    }
+
+    // Check if missile reached target
+    const dist = distance(missile.pos, missile.target);
+    if (dist < LEVELS[currentLevel].missileSpeed) {
+      missile.alive = false;
+      destroyed = true;
+      
+      // Handle city damage
+      if (missile.target.health !== undefined) {
+        missile.target.health--;
+        if (missile.target.health <= 0) {
+          missile.target.alive = false;
+        }
+      } else {
+        missile.target.alive = false;
+      }
+      
+      // Create explosion at target
+      createExplosion(missile.pos.x, missile.pos.y);
+      
+      checkGameOver();
+    }
+
+    // Draw alive missiles
+    if (missile.alive) {
+      context.beginPath();
+      context.moveTo(missile.start.x, missile.start.y);
+      context.lineTo(missile.pos.x, missile.pos.y);
+      context.stroke();
+
+      context.fillRect(missile.pos.x - missileSize / 2, missile.pos.y - missileSize / 2, missileSize, missileSize);
+    } else {
+      // If destroyed, add explosion if not already added
+      if (destroyed) {
+        createExplosion(missile.pos.x, missile.pos.y);
+      }
+      
+      // Return to pool and remove from active list
+      missilePool.push(missile);
+      missiles.splice(i, 1);
+    }
+  }
+}
+
+// Create explosion using pool
+function createExplosion(x, y) {
+  const explosion = getPooledObject(explosionPool, () => ({}));
+  Object.assign(explosion, {
+    x: x,
+    y: y,
+    size: 2,
+    dir: 1,
+    alive: true
+  });
+  explosions.push(explosion);
+}
+
+// Update and draw counter missiles
+function updateAndDrawCounterMissiles() {
+  context.strokeStyle = 'blue';
+  context.fillStyle = 'white';
+  
+  for (let i = counterMissiles.length - 1; i >= 0; i--) {
+    const missile = counterMissiles[i];
+    missile.pos.x += missile.dx;
+    missile.pos.y += missile.dy;
+
+    // if missile is close to the target or off the screen, we blow it up
+    const dist = distance(missile.pos, missile.target);
+    if (dist < counterMissileSpeed || 
+        missile.pos.x < 0 || missile.pos.x > canvas.width ||
+        missile.pos.y < 0 || missile.pos.y > canvas.height) {
+      missile.alive = false;
+      activeCounterMissiles--;
+      updateMissileAvailability();
+      
+      // Create explosion
+      createExplosion(missile.pos.x, missile.pos.y);
+      
+      // Return to pool and remove from active list
+      counterMissilePool.push(missile);
+      counterMissiles.splice(i, 1);
+    }
+    else {
+      context.beginPath();
+      context.moveTo(missile.start.x, missile.start.y);
+      context.lineTo(missile.pos.x, missile.pos.y);
+      context.stroke();
+
+      context.fillRect(missile.pos.x - 2, missile.pos.y - 2, 4, 4);
+    }
+  }
+}
+
+// Update and draw explosions
+function updateAndDrawExplosions() {
+  for (let i = explosions.length - 1; i >= 0; i--) {
+    const explosion = explosions[i];
+    
+    // Update explosion size
+    explosion.size += explosion.dir;
+    if (explosion.size > 30) {
+      explosion.dir = -1;
+    } else if (explosion.size < 2 && explosion.dir === -1) {
+      explosion.alive = false;
+    }
+    
+    // Draw active explosions
+    if (explosion.alive) {
+      context.beginPath();
+      context.arc(explosion.x, explosion.y, explosion.size, 0, Math.PI * 2);
+      context.strokeStyle = LEVELS[currentLevel].color;
+      context.stroke();
+    } else {
+      // Return to pool and remove from active list
+      explosionPool.push(explosion);
+      explosions.splice(i, 1);
+    }
+  }
+}
+
+// Update score display
+function updateScore(points) {
+  const previousScore = score;
+  score += points;
+  document.getElementById('score-display').textContent = `Score: ${score}`;
+  
+  // Check if player crossed a 500-point threshold for missile refill
+  if (Math.floor(previousScore / 500) < Math.floor(score / 500)) {
+    // Refill all active silos to full missile count
+    silos.forEach(silo => {
+      if (silo.alive) {
+        silo.missiles = 10;
+      }
+    });
+    
+    // Display missile refill message
+    const refillMessage = document.createElement('div');
+    refillMessage.textContent = "MISSILES REFILLED!";
+    refillMessage.style.cssText = `
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: #00ffff;
+      font-size: 36px;
+      font-weight: bold;
+      text-shadow: 0 0 10px #00ffff;
+      z-index: 5;
+      opacity: 1;
+    `;
+    document.body.appendChild(refillMessage);
+    
+    // Fade out the message after 2 seconds
+    let opacity = 1;
+    const fadeInterval = setInterval(() => {
+      opacity -= 0.05;
+      refillMessage.style.opacity = opacity;
+      
+      if (opacity <= 0) {
+        clearInterval(fadeInterval);
+        document.body.removeChild(refillMessage);
+      }
+    }, 100);
+    
+    // Update missile availability
+    updateMissileAvailability();
+  }
+  
+  // Check if player crossed a 1050-point threshold for apocalypse message
+  if (Math.floor(previousScore / 1050) < Math.floor(score / 1050)) {
+    // Display apocalypse message
+    const apocalypseMessage = document.createElement('div');
+    apocalypseMessage.textContent = "WORLD 8 APOCALYPSE";
+    apocalypseMessage.style.cssText = `
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: #ff0000;
+      font-size: 48px;
+      font-weight: bold;
+      text-shadow: 0 0 15px #ff0000;
+      z-index: 5;
+      opacity: 1;
+    `;
+    document.body.appendChild(apocalypseMessage);
+    
+    // Fade out the message after 2 seconds
+    let opacity = 1;
+    const fadeInterval = setInterval(() => {
+      opacity -= 0.05;
+      apocalypseMessage.style.opacity = opacity;
+      
+      if (opacity <= 0) {
+        clearInterval(fadeInterval);
+        document.body.removeChild(apocalypseMessage);
+      }
+    }, 100);
+  }
+  
+  // Check if player crossed a 300-point threshold for difficulty increase
+  if (Math.floor(previousScore / 300) < Math.floor(score / 300)) {
+    // Increase difficulty by 10% (changed from 3%)
+    difficultyMultiplier *= 1.10;
+    
+    // Update missile speeds for all levels
+    for (let i = 0; i < LEVELS.length; i++) {
+      LEVELS[i].missileSpeed = baseSpeed[i] * difficultyMultiplier;
+    }
+    
+    // Display difficulty increase message
+    const difficultyMessage = document.createElement('div');
+    difficultyMessage.textContent = "DIFFICULTY INCREASED!";
+    difficultyMessage.style.cssText = `
+      position: absolute;
+      top: 60%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: #ff9900;
+      font-size: 24px;
+      font-weight: bold;
+      text-shadow: 0 0 10px #ff9900;
+      z-index: 5;
+      opacity: 1;
+    `;
+    document.body.appendChild(difficultyMessage);
+    
+    // Fade out the message after 2 seconds
+    let opacity = 1;
+    const fadeInterval = setInterval(() => {
+      opacity -= 0.05;
+      difficultyMessage.style.opacity = opacity;
+      
+      if (opacity <= 0) {
+        clearInterval(fadeInterval);
+        document.body.removeChild(difficultyMessage);
+      }
+    }, 100);
+  }
+}
+
+// Award bonus points when level is completed
+function awardBonusPoints() {
+  // Points for surviving cities
+  const cityPoints = cities.filter(city => city.alive).length * 100;
+  
+  // Points for remaining missiles
+  let missilePoints = 0;
+  silos.forEach(silo => {
+    if (silo.alive) {
+      missilePoints += silo.missiles * 5;
+    }
+  });
+  
+  // Total bonus
+  const totalBonus = cityPoints + missilePoints;
+  updateScore(totalBonus);
+  
+  // Show bonus points message
+  const bonusMessage = document.createElement('div');
+  bonusMessage.innerHTML = `LEVEL COMPLETED!<br>BONUS POINTS: ${totalBonus}`;
+  bonusMessage.style.cssText = `
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #ffff00;
+    font-size: 36px;
+    font-weight: bold;
+    text-shadow: 0 0 10px #ffff00;
+    z-index: 5;
+    opacity: 1;
+    text-align: center;
+  `;
+  document.body.appendChild(bonusMessage);
+  
+  // Fade out the message after 2 seconds
+  let opacity = 1;
+  const fadeInterval = setInterval(() => {
+    opacity -= 0.05;
+    bonusMessage.style.opacity = opacity;
+    
+    if (opacity <= 0) {
+      clearInterval(fadeInterval);
+      document.body.removeChild(bonusMessage);
+      
+      // Proceed to next level
+      currentLevel = (currentLevel + 1) % LEVELS.length;
+      currInterval = 0;
+      levelComplete = false;
+      updateLevelDisplay();
+    }
+  }, 100);
+}
+
+// Modify check game over to include wallet messaging
+function checkGameOver() {
+  const citiesAlive = cities.some(city => city.alive);
+  const silosAlive = silos.some(silo => silo.alive);
+  
+  if (!citiesAlive || !silosAlive) {
+    gameOver = true;
+    document.getElementById('game-over').style.display = 'block';
+    document.getElementById('restart-button').style.display = 'block';
+    updateGameState(GAME_STATES.GAME_OVER);
+    
+    // Flash the game over message for attention
+    let opacity = 1;
+    let direction = -0.1;
+    const flashInterval = setInterval(() => {
+      const gameOverElement = document.getElementById('game-over');
+      gameOverElement.style.opacity = opacity;
+      
+      opacity += direction;
+      if (opacity <= 0.3) {
+        direction = 0.1;
+      } else if (opacity >= 1) {
+        direction = -0.1;
+      }
+    }, 100);
+    
+    // Display the enhanced pop-up message after a short delay
+    setTimeout(() => {
+      const popup = document.getElementById('game-over-popup');
+      popup.style.display = 'flex';
+      
+      // Add message about payment for restart
+      const paymentInfo = document.createElement('div');
+      paymentInfo.style.color = 'white';
+      paymentInfo.style.fontSize = '16px';
+      paymentInfo.style.marginBottom = '15px';
+      paymentInfo.textContent = `Pay ${ICP_FEE} ICP to play again`;
+      
+      // Insert before the button
+      const content = document.getElementById('game-over-popup-content');
+      const button = document.getElementById('game-over-popup-button');
+      content.insertBefore(paymentInfo, button);
+      
+      // Add shake effect
+      document.body.classList.add('shake');
+      setTimeout(() => {
+        document.body.classList.remove('shake');
+      }, 500);
+      
+      // Play explosion sound effect if available
+      try {
+        const audio = new Audio('explosion.mp3');
+        audio.volume = 0.5;
+        audio.play().catch(e => console.log("Audio play failed:", e));
+      } catch (e) {
+        console.log("Audio not supported");
+      }
+    }, 1000);
+    
+    // Log for debugging
+    console.log("Game Over triggered. Cities alive:", citiesAlive, "Silos alive:", silosAlive);
+  }
+}
+
+// Bonus Target class
+class BonusTarget {
+  constructor(type) {
+    this.type = type;
+    this.x = Math.random() * canvas.width;
+    this.y = 0;
+    this.speed = BONUS_TARGETS[type].speed;
+    this.size = BONUS_TARGETS[type].size;
+    this.points = BONUS_TARGETS[type].points;
+    this.color = BONUS_TARGETS[type].color;
+    this.direction = Math.random() < 0.5 ? 1 : -1;
+  }
+
+  update() {
+    this.y += this.speed;
+    this.x += this.speed * this.direction;
+    
+    // Bounce off screen edges
+    if (this.x < 0 || this.x > canvas.width) {
+      this.direction *= -1;
+    }
+  }
+
+  draw() {
+    context.beginPath();
+    context.fillStyle = this.color;
+    if (this.type === 'UFO') {
+      // Draw UFO shape
+      context.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+      context.fill();
+      context.beginPath();
+      context.arc(this.x, this.y - this.size/2, this.size/2, 0, Math.PI);
+      context.fill();
+    } else if (this.type === 'SATELITE') {
+      // Draw satellite shape
+      context.rect(this.x - this.size/2, this.y - this.size/2, this.size, this.size);
+      context.fill();
+      context.beginPath();
+      context.moveTo(this.x - this.size, this.y);
+      context.lineTo(this.x + this.size, this.y);
+      context.strokeStyle = this.color;
+      context.lineWidth = 2;
+      context.stroke();
+    }
+  }
+
+  isHit(x, y) {
+    const distance = Math.sqrt(
+      Math.pow(x - this.x, 2) + Math.pow(y - this.y, 2)
+    );
+    return distance < this.size;
+  }
+}
+
+// Spawn bonus targets
+function spawnBonusTarget() {
+  const random = Math.random();
+  let type = null;
+  
+  if (random < BONUS_TARGETS.SATELITE.spawnChance) {
+    type = 'SATELITE';
+  } else if (random < BONUS_TARGETS.UFO.spawnChance) {
+    type = 'UFO';
+  }
+  
+  if (type) {
+    bonusTargets.push(new BonusTarget(type));
+  }
+}
+
+// Update bonus targets
+function updateBonusTargets() {
+  bonusTargetSpawnTimer += deltaTime;
+  if (bonusTargetSpawnTimer >= BONUS_TARGET_SPAWN_INTERVAL) {
+    spawnBonusTarget();
+    bonusTargetSpawnTimer = 0;
+  }
+
+  for (let i = bonusTargets.length - 1; i >= 0; i--) {
+    const target = bonusTargets[i];
+    target.update();
+    
+    // Remove targets that go off screen
+    if (target.y > canvas.height) {
+      bonusTargets.splice(i, 1);
+      continue;
+    }
+    
+    // Check for hits with counter-missiles
+    for (let j = counterMissiles.length - 1; j >= 0; j--) {
+      const missile = counterMissiles[j];
+      if (target.isHit(missile.pos.x, missile.pos.y)) {
+        // Award points
+        updateScore(target.points);
+        
+        // Create explosion effect
+        const explosion = getPooledObject(explosionPool, () => ({}));
+        Object.assign(explosion, {
+          x: target.x,
+          y: target.y,
+          size: target.size * 2,
+          dir: 1,
+          color: target.color,
+          alive: true
+        });
+        explosions.push(explosion);
+        
+        // Remove target and missile
+        bonusTargets.splice(i, 1);
+        
+        // Return missile to pool
+        missile.alive = false;
+        activeCounterMissiles--;
+        updateMissileAvailability();
+        counterMissilePool.push(missile);
+        counterMissiles.splice(j, 1);
+        break;
+      }
+    }
+  }
+}
+
+// Draw bonus targets
+function drawBonusTargets() {
+  bonusTargets.forEach(target => target.draw());
+}
+
+// Initialize base speeds
+function initializeBaseSpeeds() {
+  baseSpeed = LEVELS.map(level => level.missileSpeed);
+}
+
+// Main game loop
+function loop(time) {
+  if (currentState !== GAME_STATES.PLAYING) {
+    requestAnimationFrame(loop);
+    return;
+  }
+  
+  requestAnimationFrame(loop);
+  
+  // Calculate delta time
+  if (lastTime === 0) {
+    lastTime = time;
+    return;
+  }
+  deltaTime = time - lastTime;
+  lastTime = time;
+
+  context.clearRect(0, 0, canvas.width, canvas.height);
+
+  const level = LEVELS[currentLevel];
+
+  // Missile spawning logic
+  missileSpawnTimer += deltaTime;
+  if (missileSpawnTimer >= level.interval && currInterval < level.missileCount.length) {
+    for (let i = 0; i < level.missileCount[currInterval]; i++) {
+      spawnMissile();
+    }
+    currInterval++;
+    missileSpawnTimer = 0;
+  }
+
+  // Reset interval counter if we've gone through all waves
+  if (currInterval >= level.missileCount.length) {
+    currInterval = 0;
+  }
+
+  // Check for level completion
+  if (!levelComplete && currInterval >= level.missileCount.length && missiles.length === 0) {
+    levelComplete = true;
+    awardBonusPoints();
+  }
+
+  // Update and draw game elements
+  drawCities();
+  drawGroundAndSilos();
+  updateAndDrawMissiles(time);
+  updateAndDrawCounterMissiles();
+  updateAndDrawExplosions();
+  updateBonusTargets();
+  drawBonusTargets();
+}
+
+// Restart the game with optimized object handling
+function restartGame() {
+  score = 0;
+  gameOver = false;
+  activeCounterMissiles = 0;
+  currentLevel = 0;
+  currInterval = 0;
+  levelComplete = false;
+  lastTime = 0;
+  missileSpawnTimer = 0;
+  difficultyMultiplier = 1.0;
+  
+  // Reset missile speeds
+  if (baseSpeed.length === 0) {
+    initializeBaseSpeeds();
+  } else {
+    for (let i = 0; i < LEVELS.length; i++) {
+      LEVELS[i].missileSpeed = baseSpeed[i];
+    }
+  }
+  
+  // Hide game over screen
+  document.getElementById('game-over').style.display = 'none';
+  document.getElementById('restart-button').style.display = 'none';
+  document.getElementById('score-display').textContent = 'Score: 0';
+  
+  // Reset game objects
+  initializeGameObjects();
+  
+  // Clear active lists but keep pooled objects
+  missiles.length = 0;
+  counterMissiles.length = 0;
+  explosions.length = 0;
+  bonusTargets.length = 0;
+  bonusTargetSpawnTimer = 0;
+  
+  // Update UI
+  updateLevelDisplay();
+  updateGameState(GAME_STATES.PLAYING);
+  updateMissileAvailability();
+  
+  // Log reset for debugging
+  console.log("Game reset. Cities:", cities.length, "Silos:", silos.length);
+}
+
+// Draw pixel art city background
+function createCityBackground() {
+  const bgCity = document.getElementById('background-city');
+  bgCity.innerHTML = ''; // Clear any existing canvas
+  
+  const bgCanvas = document.createElement('canvas');
+  bgCanvas.width = canvas.width;
+  bgCanvas.height = 150;
+  bgCity.appendChild(bgCanvas);
+  
+  // Position the background city relative to the game elements
+  const topOfGround = siloY; // 470
+  const cityBottomPosition = topOfGround - 100; // Position 100px above the top of the ground
+  bgCity.style.bottom = (canvas.height - cityBottomPosition - 54) + 'px'; // Lower by 54px
+  
+  const bgCtx = bgCanvas.getContext('2d');
+  
+  // Define city silhouette - adjust positions to be centered
+  const buildingWidth = canvas.width;
+  const scale = buildingWidth / 1040; // Scale factor based on original design
+  
+  const buildings = [
+    {x: 0, width: 80 * scale, height: 100},
+    {x: 90 * scale, width: 50 * scale, height: 70},
+    {x: 150 * scale, width: 70 * scale, height: 120},
+    {x: 230 * scale, width: 100 * scale, height: 80},
+    {x: 340 * scale, width: 60 * scale, height: 130},
+    {x: 410 * scale, width: 80 * scale, height: 90},
+    {x: 500 * scale, width: 120 * scale, height: 140},
+    {x: 630 * scale, width: 40 * scale, height: 60},
+    {x: 680 * scale, width: 70 * scale, height: 110},
+    {x: 760 * scale, width: 90 * scale, height: 80},
+    {x: 860 * scale, width: 60 * scale, height: 100},
+    {x: 930 * scale, width: 100 * scale, height: 120},
+    {x: 1040 * scale, width: 70 * scale, height: 90}
+  ];
+  
+  // Draw buildings
+  bgCtx.fillStyle = '#808080';
+  buildings.forEach(building => {
+    bgCtx.fillRect(building.x, bgCanvas.height - building.height, building.width, building.height);
+    
+    // Add windows
+    bgCtx.fillStyle = '#404040';
+    const windowSize = 5;
+    const windowSpacing = 10;
+    const windowsPerRow = Math.floor(building.width / windowSpacing) - 1;
+    const windowsPerColumn = Math.floor(building.height / windowSpacing) - 1;
+    
+    for (let row = 0; row < windowsPerColumn; row++) {
+      for (let col = 0; col < windowsPerRow; col++) {
+        // Randomly skip some windows to create variety
+        if (Math.random() > 0.3) {
+          bgCtx.fillRect(
+            building.x + col * windowSpacing + windowSpacing, 
+            bgCanvas.height - building.height + row * windowSpacing + windowSpacing, 
+            windowSize, windowSize
+          );
+        }
+      }
+    }
+    bgCtx.fillStyle = '#808080';
+  });
+  
+  // Add pixelation effect
+  bgCtx.imageSmoothingEnabled = false;
+}
+
+// Event listeners
+document.addEventListener('DOMContentLoaded', () => {
+  // Initialize UI elements and game objects
+  createCityBackground();
+  initializeGameObjects();
+  initializeBaseSpeeds();
+  updateMissileAvailability();
+  updateLevelDisplay();
+  
+  // Set initial game state
+  updateGameState(GAME_STATES.TITLE);
+  
+  // Connect wallet button
+  document.getElementById('wallet-button').addEventListener('click', async () => {
+    await connectPlugWallet();
+  });
+  
+  // Add start button event listener with payment
+  document.getElementById('start-button').addEventListener('click', async () => {
+    console.log("Start button clicked!");
+    
+    // Request payment before starting the game
+    const paymentSuccess = await requestPayment();
+    if (paymentSuccess) {
+      restartGame();
+      updateGameState(GAME_STATES.PLAYING);
+    }
+  });
+  
+  // Add restart button event listener with payment
+  document.getElementById('restart-button').addEventListener('click', async () => {
+    // Request payment before restarting
+    const paymentSuccess = await requestPayment();
+    if (paymentSuccess) {
+      restartGame();
+    }
+  });
+  
+  // Add game over popup button listener with payment
+  document.getElementById('game-over-popup-button').addEventListener('click', async () => {
+    document.getElementById('game-over-popup').style.display = 'none';
+    
+    // Request payment before restarting
+    const paymentSuccess = await requestPayment();
+    if (paymentSuccess) {
+      restartGame();
+    }
+  });
+  
+  // Start the game loop
+  requestAnimationFrame(loop);
+});
+
+// Update background when window resizes
+window.addEventListener('resize', () => {
+  createCityBackground();
+});
+
+// Canvas click handler for firing missiles with object pooling
+canvas.addEventListener('click', (event) => {
+  if (currentState !== GAME_STATES.PLAYING || gameOver || activeCounterMissiles >= MAX_COUNTER_MISSILES) {
+    return;
+  }
+  
+  const rect = canvas.getBoundingClientRect();
+  const x = event.clientX - rect.left;
+  const y = event.clientY - rect.top;
+  
+  // Find the closest active silo with available missiles
+  let closestSilo = null;
+  let closestDist = Infinity;
+  
+  for (const silo of silos) {
+    if (silo.alive && silo.missiles > 0) {
+      const dist = distance({ x, y }, silo);
+      if (dist < closestDist) {
+        closestDist = dist;
+        closestSilo = silo;
+      }
+    }
+  }
+  
+  if (closestSilo) {
+    // Calculate direction vector
+    const dx = x - closestSilo.x;
+    const dy = y - closestSilo.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    
+    // Get missile from pool
+    const missile = getPooledObject(counterMissilePool, () => ({}));
+    Object.assign(missile, {
+      start: { x: closestSilo.x, y: closestSilo.y },
+      target: { x, y },
+      pos: { x: closestSilo.x, y: closestSilo.y },
+      alive: true,
+      // Normalize the velocity vector and scale by speed
+      dx: (dx / dist) * counterMissileSpeed,
+      dy: (dy / dist) * counterMissileSpeed
+    });
+    
+    counterMissiles.push(missile);
+    closestSilo.missiles--;
+    activeCounterMissiles++;
+    updateMissileAvailability();
+  }
+});
+</script>
+</body>
+</html>
