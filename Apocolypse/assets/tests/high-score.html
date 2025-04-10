@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WORLD 8 APOCALYPSE - Submit High Score</title>
+    
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: black;
+            color: white;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1, h2 {
+            color: #ff0000;
+            text-align: center;
+            text-shadow: 0 0 8px #ff0000;
+        }
+        h3 {
+            color: #00ffff;
+             text-shadow: 0 0 5px #00ffff;
+        }
+        .container {
+             width: 100%;
+             max-width: 800px;
+             margin: 20px auto;
+             padding: 20px;
+             background-color: rgba(30, 30, 30, 0.8);
+             border-radius: 10px;
+             border: 1px solid #555;
+        }
+        .score-submission, .high-scores {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .your-score {
+             font-size: 1.2em;
+             margin-bottom: 20px;
+        }
+        .your-score span {
+             font-weight: bold;
+             color: #ffff00;
+        }
+        .high-score-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            border: 1px solid #444;
+        }
+        .high-score-table th, .high-score-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #444;
+        }
+        .high-score-table th {
+            background-color: #282828;
+            color: #00ffff;
+        }
+        .button {
+            background-color: #ff0000;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            cursor: pointer;
+            margin: 10px 5px;
+            font-weight: bold;
+            font-size: 1em;
+            border-radius: 5px;
+        }
+        input[type="text"] {
+            padding: 12px;
+            border-radius: 5px;
+            border: 1px solid #555;
+            background-color: #111;
+            color: #fff;
+            font-size: 1em;
+        }
+        .status {
+            color: #00ffff;
+            margin-top: 15px;
+            min-height: 1.2em;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>WORLD 8 APOCALYPSE</h1>
+    <h2>Submit Your High Score</h2>
+
+    <div class="container">
+        <div class="score-submission">
+            <h3>Your Score</h3>
+            <div class="your-score">
+                Score: <span id="playerCurrentScore">1500</span> | 
+                Level: <span id="playerCurrentLevel">3</span>
+            </div>
+            <div class="input-group">
+                <input type="text" id="playerName" placeholder="Enter Your Name (Max 20)" maxlength="20">
+                <button class="button" id="submitScore">Submit Score</button>
+            </div>
+            <div class="status" id="status">Ready to submit score</div>
+        </div>
+
+        <div class="high-scores">
+            <h3>Global High Scores</h3>
+            <button class="button" id="getHighScores" style="margin-bottom: 15px;">Refresh Scores</button>
+            <div id="highScores">
+                 <div style="text-align: center; padding: 20px;">Loading...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- High Score System Integration -->
+    <script src="high-score-integration.js"></script>
+
+    <!-- Main script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Read URL Parameters
+            function getURLParameters() {
+                const params = new URLSearchParams(window.location.search);
+                const score = parseInt(params.get('score')) || 1500;
+                const level = parseInt(params.get('level')) || 3;
+                
+                // Update UI
+                document.getElementById('playerCurrentScore').textContent = score;
+                document.getElementById('playerCurrentLevel').textContent = level;
+                console.log("URL Parameters loaded:", {score, level});
+            }
+            
+            // Call immediately on page load
+            getURLParameters();
+        });
+    </script>
+</body>
+</html> 

@@ -10,7 +10,7 @@
     window.ic = window.ic || {};
     window.ic.plug = window.ic.plug || {
       _isMock: true,
-      isConnected: false,
+      isConnected: function() { return Promise.resolve(false); },
       requestConnect: function() { return Promise.resolve(true); },
       requestBalance: function() { 
         return Promise.resolve([{ symbol: 'ICP', amount: 100, currency: 'ICP' }]); 
@@ -23,6 +23,8 @@
   <script src="https://plugwallet.ooo/plug-wallet.js" id="plug-wallet-official" onerror="console.error('Failed to load official Plug Wallet SDK')"></script>
   <!-- Then load our implementation for enhanced compatibility -->
   <script src="plug-wallet.js"></script>
+  <!-- Add the wallet-integration.js -->
+  <script src="wallet-integration.js"></script>
   <style>
   html, body {
     height: 100%;
@@ -159,19 +161,24 @@
 
   #high-scores {
     position: absolute;
-    left: 20px;
-    top: 50%;
-    transform: translateY(-50%);
+    left: -9999px; /* Move off-screen instead of removing completely */
+    visibility: hidden; /* Hide visually */
+    opacity: 0; /* Make fully transparent */
+    pointer-events: none; /* Prevent interaction */
+    width: 1px; /* Minimize size */
+    height: 1px; /* Minimize size */
+    overflow: hidden; /* Hide any overflow */
+    /* Keep the rest of the properties for when we need to restore it programmatically */
     background: rgba(0, 0, 0, 0.9);
     border: 2px solid #ff0000;
     padding: 20px;
     border-radius: 10px;
     color: white;
-    width: 250px;
     z-index: 1000;
     box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
   }
 
+  /* Keep these styles intact for when high scores are shown in the dedicated high scores page */
   #high-scores h2 {
     color: #ff0000;
     text-align: center;
@@ -191,159 +198,63 @@
     margin: 10px 0;
     padding: 8px;
     border-bottom: 1px solid #ff0000;
+  }
+
+  .debug-log-entry {
+    margin: 2px 0;
+    border-bottom: 1px dotted #333;
+    padding-bottom: 2px;
+  }
+
+  #debug-controls {
+    margin-top: 10px;
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 16px;
-    text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+    flex-wrap: wrap;
+    gap: 5px;
   }
 
-  #high-scores-list li span {
-    color: #ffff00;
-  }
-
-  #high-scores-list li .level {
-    color: #ff0000;
-    margin-left: 10px;
-  }
-
-  #game-over {
-    position: absolute;
-    color: red;
-    font-size: 48px;
-    text-align: center;
-    display: none;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 10;
-    text-shadow: 0 0 15px #ff0000;
-  }
-
-  .hidden {
-    display: none !important;
-  }
-
-  #game-over-popup {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.8);
-    display: none;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-  }
-
-  #game-over-popup-content {
-    background-color: #000;
-    border: 5px solid #ff0000;
-    padding: 30px;
-    text-align: center;
-    box-shadow: 0 0 30px #ff0000;
-    animation: pulseBorder 1s infinite alternate;
-  }
-
-  #game-over-popup-text {
-    color: #ff0000;
-    font-size: 72px;
-    font-weight: bold;
-    text-shadow: 0 0 20px #ff0000;
-    margin-bottom: 30px;
-    animation: pulseText 0.5s infinite alternate;
-  }
-
-  #game-over-popup-button {
-    background-color: #ffff00;
-    color: #000;
-    border: none;
-    padding: 15px 30px;
-    font-size: 24px;
-    font-weight: bold;
+  .debug-button {
+    background: #333;
+    color: #00ffff;
+    border: 1px solid #00ffff;
+    padding: 3px 6px;
+    font-size: 10px;
     cursor: pointer;
-    box-shadow: 0 0 20px #ffff00;
-    transition: all 0.3s;
   }
 
-  #game-over-popup-button:hover {
-    transform: scale(1.1);
-    box-shadow: 0 0 30px #ffff00;
+  .debug-button:hover {
+    background: #444;
   }
 
-  #return-to-start-button {
-    background-color: #ff0000;
-    color: white;
-    border: none;
-    padding: 15px 30px;
-    font-size: 24px;
-    font-weight: bold;
-    cursor: pointer;
-    box-shadow: 0 0 20px #ff0000;
-    transition: all 0.3s;
-    margin-top: 15px;
-  }
-
-  #return-to-start-button:hover {
-    transform: scale(1.1);
-    box-shadow: 0 0 30px #ff0000;
-  }
-
-  @keyframes pulseBorder {
-    from { box-shadow: 0 0 30px #ff0000; }
-    to { box-shadow: 0 0 60px #ff0000; }
-  }
-
-  @keyframes pulseText {
-    from { text-shadow: 0 0 20px #ff0000; }
-    to { text-shadow: 0 0 40px #ff0000; }
-  }
-
-  /* Payment related styles */
-  #payment-info {
-    position: absolute;
-    top: 80px;
-    left: 50%;
-    transform: translateX(-50%);
-    color: white;
-    font-size: 18px;
-    z-index: 10;
-    background-color: rgba(0, 0, 0, 0.7);
-    padding: 10px 15px;
-    border-radius: 5px;
+  #debug-log {
+    max-height: 150px;
+    overflow-y: auto;
+    margin-top: 10px;
+    background: #111;
+    padding: 5px;
+    font-size: 10px;
     border: 1px solid #333;
   }
 
-  #wallet-button {
-    margin-top: 10px;
-    padding: 8px 15px;
-    background-color: #4CAF50;
-    color: white;
-    border: none;
-    border-radius: 4px;
+  .debug-log-entry {
+    margin: 2px 0;
+    border-bottom: 1px dotted #333;
+    padding-bottom: 2px;
+  }
+
+  .toggle-tests-button {
+    position: fixed;
+    right: 10px;
+    bottom: 10px;
+    background: #330000;
+    color: #ff0000;
+    border: 1px solid #ff0000;
+    padding: 8px 12px;
+    font-size: 12px;
     cursor: pointer;
-    font-size: 16px;
-    transition: all 0.3s;
-  }
-
-  #wallet-button:hover {
-    background-color: #45a049;
-    transform: scale(1.05);
-  }
-
-  .payment-success {
-    color: #4CAF50;
-    font-weight: bold;
-    margin-top: 10px;
-    animation: fadeInOut 2s forwards;
-  }
-
-  @keyframes fadeInOut {
-    0% { opacity: 0; }
-    20% { opacity: 1; }
-    80% { opacity: 1; }
-    100% { opacity: 0; }
+    z-index: 9000;
+    text-decoration: none;
+    display: none;
   }
   </style>
 </head>
@@ -355,17 +266,29 @@
   <button id="wallet-button">Connect Wallet</button>
   <button id="start-button" disabled>START GAME</button>
   <button id="high-scores-button" style="
-    margin-top: 10px;
-    padding: 8px 15px;
-    background-color: #4CAF50;
-    color: white;
-    border: none;
-    border-radius: 4px;
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    padding: 10px 20px;
+    background-color: #333;
+    color: #fff;
+    border: 2px solid #fff;
     cursor: pointer;
-    font-size: 16px;
-    transition: all 0.3s;"
-    onclick="window.location.href='high-score-example.html'">
-    HIGH SCORES
+    font-family: 'Press Start 2P', cursive;
+    font-size: 14px;"
+onclick="window.location.href='high-score.html'">High Scores</button>
+  <button id="sound-toggle" style="
+    position: absolute;
+    top: 70px;
+    right: 20px;
+    padding: 10px 20px;
+    background-color: #333;
+    color: #fff;
+    border: 2px solid #fff;
+    cursor: pointer;
+    font-family: 'Press Start 2P', cursive;
+    font-size: 14px;">
+    <span id="sound-icon">🔊</span>
   </button>
 </div>
 <div id="score-display" class="hidden">Score: 0</div>
@@ -374,7 +297,26 @@
   <div id="silo-indicator"></div>
 </div>
 <div id="level-display" class="hidden"></div>
-<canvas width="800" height="550" id="game" class="hidden"></canvas>
+
+<div id="pause-overlay" class="hidden" style="
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 90;
+  color: white;
+  font-family: 'Press Start 2P', cursive;">
+  <h2 style="font-size: 36px; margin-bottom: 20px; text-shadow: 0 0 10px #ff0000;">PAUSED</h2>
+  <p style="margin-bottom: 30px;">Press ESC or P to resume</p>
+</div>
+
+<canvas id="gameCanvas"></canvas>
 <div id="game-over" class="hidden">
   GAME OVER GEEZER<br>
   <button id="restart-button">Play Again</button>
@@ -383,14 +325,500 @@
   <div id="game-over-popup-content">
     <div id="game-over-popup-text">GAME OVER GEEZER!!</div>
     <button id="game-over-popup-button">PLAY AGAIN</button>
-    <button id="return-to-start-button">RETURN TO START</button>
   </div>
 </div>
+<div id="high-scores">
+  <h2>Global High Scores</h2>
+  <div id="high-scores-loading">Loading scores...</div>
+  <ul id="high-scores-list"></ul>
+</div>
+
+<!-- Debug Overlay -->
+<div id="debug-overlay">
+  <h3>Debug Mode</h3>
+  
+  <div class="debug-section">
+    <h4>Game Info</h4>
+    <div class="debug-row">
+      <span class="debug-key">Game State:</span>
+      <span class="debug-value" id="debug-game-state">Loading</span>
+    </div>
+    <div class="debug-row">
+      <span class="debug-key">FPS:</span>
+      <span class="debug-value" id="debug-fps">0</span>
+    </div>
+    <div class="debug-row">
+      <span class="debug-key">Render Time:</span>
+      <span class="debug-value" id="debug-render-time">0ms</span>
+    </div>
+  </div>
+  
+  <div class="debug-section">
+    <h4>Object Stats</h4>
+    <div class="debug-row">
+      <span class="debug-key">Active Missiles:</span>
+      <span class="debug-value" id="debug-missiles">0/0</span>
+    </div>
+    <div class="debug-row">
+      <span class="debug-key">Active Counter Missiles:</span>
+      <span class="debug-value" id="debug-counter-missiles">0/0</span>
+    </div>
+    <div class="debug-row">
+      <span class="debug-key">Active Explosions:</span>
+      <span class="debug-value" id="debug-explosions">0/0</span>
+    </div>
+  </div>
+  
+  <div class="debug-section">
+    <h4>Wallet Status</h4>
+    <div class="debug-row">
+      <span class="debug-key">Connected:</span>
+      <span class="debug-value" id="debug-wallet-connected">No</span>
+    </div>
+    <div class="debug-row">
+      <span class="debug-key">Mock Mode:</span>
+      <span class="debug-value" id="debug-wallet-mock">Yes</span>
+    </div>
+    <div class="debug-row">
+      <span class="debug-key">Recent Payment:</span>
+      <span class="debug-value" id="debug-recent-payment">No</span>
+    </div>
+  </div>
+  
+  <div id="debug-controls">
+    <button class="debug-button" id="debug-spawn-missile">Spawn Missile</button>
+    <button class="debug-button" id="debug-add-score">Add 100 Score</button>
+    <button class="debug-button" id="debug-next-level">Next Level</button>
+    <button class="debug-button" id="debug-toggle-invincible">Invincible: Off</button>
+    <button class="debug-button" id="debug-kill-city">Kill City</button>
+    <button class="debug-button" id="debug-refresh-missiles">Refresh Missiles</button>
+  </div>
+  
+  <div id="debug-log">
+    <div class="debug-log-entry">Debug mode initialized</div>
+  </div>
+</div>
+
+<a href="test-launcher.html" class="toggle-tests-button">Test Suite</a>
+
 <script>
+// Object pooling system
+// Pool size configuration
+const POOL_SIZES = {
+  MISSILE: 100,
+  COUNTER_MISSILE: 30,
+  EXPLOSION: 50,
+  FLOATING_TEXT: 50,
+  BONUS_TARGET: 20  // Added bonus target pool size
+};
+
+// Bonus target types and configuration
+const BONUS_TARGETS = {
+  ASTEROID: {
+    spawnChance: 0.5,
+    speed: 2,
+    size: 20,
+    points: 50,
+    color: '#8B4513',
+    soundEffect: 'bonusTarget'
+  },
+  SATELITE: {
+    spawnChance: 0.3,
+    speed: 3,
+    size: 15,
+    points: 100,
+    color: '#4169E1',
+    soundEffect: 'bonusTarget'
+  },
+  UFO: {
+    spawnChance: 0.2,
+    speed: 4,
+    size: 25,
+    points: 200,
+    color: '#32CD32',
+    soundEffect: 'bonusTarget'
+  }
+};
+
+// Bonus target spawn interval (in milliseconds)
+const BONUS_TARGET_SPAWN_INTERVAL = 10000; // 10 seconds
+
+// Initialize object pools
+let missilePool = [];
+let counterMissilePool = [];
+let explosionPool = [];
+let floatingTextPool = [];
+let bonusTargetPool = []; // Added bonus target pool
+
+// Active game object arrays
+let missiles = [];
+let counterMissiles = [];
+let explosions = [];
+let floatingTexts = [];
+let bonusTargets = []; // Added bonus targets array
+let bonusTargetSpawnTimer = 0; // Added spawn timer
+
+// Canvas reference for rendering
+let gameCanvas = null;
+
+// Empty object creators for pools
+function createEmptyMissile() {
+  return {
+    start: { x: 0, y: 0 },
+    target: null,
+    pos: { x: 0, y: 0 },
+    alive: false,
+    dx: 0,
+    dy: 0,
+    reset: function() {
+      this.alive = false;
+      return this;
+    }
+  };
+}
+
+function createEmptyCounterMissile() {
+  return {
+    start: { x: 0, y: 0 },
+    target: { x: 0, y: 0 },
+    pos: { x: 0, y: 0 },
+    alive: false,
+    dx: 0,
+    dy: 0,
+    reset: function() {
+      this.alive = false;
+      return this;
+    }
+  };
+}
+
+function createEmptyExplosion() {
+  return {
+    x: 0,
+    y: 0,
+    size: 0,
+    dir: 1,
+    alive: false,
+    reset: function() {
+      this.alive = false;
+      this.size = 0;
+      this.dir = 1;
+      return this;
+    }
+  };
+}
+
+function createEmptyFloatingText() {
+  return {
+    x: 0,
+    y: 0,
+    text: '',
+    color: '#ffffff',
+    size: 12,
+    alpha: 1.0,
+    scale: 1.0,
+    velocity: { x: 0, y: 0 },
+    createdAt: 0,
+    duration: 1000,
+    alive: false,
+    reset: function() {
+      this.alive = false;
+      this.alpha = 1.0;
+      this.scale = 1.0;
+      return this;
+    }
+  };
+}
+
+// Function to create an empty bonus target for object pooling
+function createEmptyBonusTarget() {
+  return {
+    type: null,
+    x: 0,
+    y: 0,
+    speed: 0,
+    size: 0,
+    points: 0,
+    color: '#ffffff',
+    soundEffect: null,
+    direction: 1,
+    rotation: 0,
+    rotationSpeed: 0,
+    alpha: 1.0,
+    pulseDirection: 1,
+    pulseValue: 0,
+    timeAlive: 0,
+    alive: false,
+    reset: function() {
+      this.alive = false;
+      this.timeAlive = 0;
+      this.alpha = 1.0;
+      this.pulseValue = 0;
+      return this;
+    },
+    update: function(deltaTime) {
+      if (!this.alive) return;
+      
+      this.y += this.speed;
+      this.x += this.speed * this.direction * 0.5;
+      this.timeAlive += deltaTime;
+      
+      // Bounce off screen edges
+      if (this.x < this.size || this.x > canvas.width - this.size) {
+        this.direction *= -1;
+      }
+      
+      // Update rotation
+      this.rotation += this.rotationSpeed;
+      
+      // Update pulse effect
+      this.pulseValue += 0.05 * this.pulseDirection;
+      if (this.pulseValue >= 1.0) {
+        this.pulseDirection = -1;
+      } else if (this.pulseValue <= 0.0) {
+        this.pulseDirection = 1;
+      }
+    },
+    draw: function() {
+      if (!this.alive) return;
+      
+      context.save();
+      context.translate(this.x, this.y);
+      context.rotate(this.rotation);
+      
+      // Apply pulsing effect to color
+      const pulseIntensity = Math.sin(this.timeAlive / 200) * 0.3 + 0.7;
+      const glowSize = this.size * 0.3 * pulseIntensity;
+      
+      // Draw glow effect
+      const gradient = context.createRadialGradient(0, 0, this.size * 0.5, 0, 0, this.size + glowSize);
+      gradient.addColorStop(0, this.color);
+      gradient.addColorStop(1, 'rgba(0,0,0,0)');
+      
+      context.globalAlpha = 0.6;
+      context.beginPath();
+      context.arc(0, 0, this.size + glowSize, 0, Math.PI * 2);
+      context.fillStyle = gradient;
+      context.fill();
+      
+      // Reset alpha
+      context.globalAlpha = 1.0;
+      
+      if (this.type === 'UFO') {
+        // Draw UFO shape
+        // Main body
+        context.beginPath();
+        context.ellipse(0, 0, this.size, this.size * 0.4, 0, 0, Math.PI * 2);
+        context.fillStyle = this.color;
+        context.fill();
+        
+        // Top dome
+        context.beginPath();
+        context.arc(0, -this.size * 0.1, this.size * 0.5, Math.PI, 0);
+        context.fillStyle = '#ffffff';
+        context.fill();
+        
+        // Bottom lights
+        for (let i = 0; i < 4; i++) {
+          const angle = (i / 4) * Math.PI * 2;
+          const x = Math.cos(angle) * this.size * 0.7;
+          const y = Math.sin(angle) * this.size * 0.3;
+          context.beginPath();
+          context.arc(x, y, this.size * 0.15, 0, Math.PI * 2);
+          context.fillStyle = `hsl(${(this.timeAlive / 20 + i * 90) % 360}, 100%, 75%)`;
+          context.fill();
+        }
+      } else if (this.type === 'SATELITE') {
+        // Draw satellite shape
+        // Main body
+        context.fillStyle = this.color;
+        context.fillRect(-this.size * 0.5, -this.size * 0.5, this.size, this.size);
+        
+        // Solar panels
+        context.fillStyle = '#88aaff';
+        context.fillRect(-this.size * 1.5, -this.size * 0.2, this.size, this.size * 0.4);
+        context.fillRect(this.size * 0.5, -this.size * 0.2, this.size, this.size * 0.4);
+        
+        // Antenna
+        context.beginPath();
+        context.moveTo(0, -this.size * 0.5);
+        context.lineTo(0, -this.size);
+        context.strokeStyle = '#ffffff';
+        context.lineWidth = 2;
+        context.stroke();
+        
+        // Antenna top
+        context.beginPath();
+        context.arc(0, -this.size, this.size * 0.1, 0, Math.PI * 2);
+        context.fillStyle = '#ff0000';
+        context.fill();
+      } else if (this.type === 'ASTEROID') {
+        // Draw asteroid shape with irregular edges
+        context.beginPath();
+        const points = 8;
+        const innerRadius = this.size * 0.6;
+        const outerRadius = this.size;
+        
+        for (let i = 0; i < points * 2; i++) {
+          const angle = (i / (points * 2)) * Math.PI * 2;
+          const radius = i % 2 === 0 ? outerRadius : innerRadius;
+          const x = Math.cos(angle) * radius;
+          const y = Math.sin(angle) * radius;
+          
+          if (i === 0) {
+            context.moveTo(x, y);
+          } else {
+            context.lineTo(x, y);
+          }
+        }
+        
+        context.closePath();
+        
+        // Create texture gradient
+        const rockGradient = context.createRadialGradient(0, 0, innerRadius * 0.5, 0, 0, outerRadius);
+        rockGradient.addColorStop(0, '#aaa066');
+        rockGradient.addColorStop(0.7, this.color);
+        rockGradient.addColorStop(1, '#554400');
+        
+        context.fillStyle = rockGradient;
+        context.fill();
+        
+        // Add craters
+        for (let i = 0; i < 3; i++) {
+          const craterAngle = (i / 3) * Math.PI * 2 + this.rotation;
+          const craterX = Math.cos(craterAngle) * this.size * 0.4;
+          const craterY = Math.sin(craterAngle) * this.size * 0.4;
+          const craterSize = this.size * (0.2 + Math.sin(this.timeAlive / 1000 + i) * 0.05);
+          
+          context.beginPath();
+          context.arc(craterX, craterY, craterSize, 0, Math.PI * 2);
+          context.fillStyle = 'rgba(40, 40, 40, 0.6)';
+          context.fill();
+        }
+      }
+      
+      context.restore();
+    },
+    isHit: function(x, y) {
+      const distance = Math.sqrt(
+        Math.pow(x - this.x, 2) + Math.pow(y - this.y, 2)
+      );
+      return distance < this.size;
+    }
+  };
+}
+
+// Pre-allocate object pools for better performance
+function preAllocateObjectPools() {
+  console.log("Pre-allocating object pools...");
+  
+  // Clear existing pools
+  missilePool = [];
+  counterMissilePool = [];
+  explosionPool = [];
+  floatingTextPool = [];
+  bonusTargetPool = []; // Clear bonus target pool
+  
+  // Pre-allocate missile pool
+  for (let i = 0; i < POOL_SIZES.MISSILE; i++) {
+    missilePool.push(createEmptyMissile());
+  }
+  
+  // Pre-allocate counter missile pool
+  for (let i = 0; i < POOL_SIZES.COUNTER_MISSILE; i++) {
+    counterMissilePool.push(createEmptyCounterMissile());
+  }
+  
+  // Pre-allocate explosion pool
+  for (let i = 0; i < POOL_SIZES.EXPLOSION; i++) {
+    explosionPool.push(createEmptyExplosion());
+  }
+  
+  // Pre-allocate floating text pool
+  for (let i = 0; i < POOL_SIZES.FLOATING_TEXT; i++) {
+    floatingTextPool.push(createEmptyFloatingText());
+  }
+  
+  // Pre-allocate bonus target pool
+  for (let i = 0; i < POOL_SIZES.BONUS_TARGET; i++) {
+    bonusTargetPool.push(createEmptyBonusTarget());
+  }
+  
+  console.log(`Object pools initialized: Missiles: ${missilePool.length}, Counter Missiles: ${counterMissilePool.length}, Explosions: ${explosionPool.length}, Floating Texts: ${floatingTextPool.length}, Bonus Targets: ${bonusTargetPool.length}`);
+}
+
+// Get an object from pool or create a new one if pool is empty
+function getPooledObject(pool, createFn) {
+  // Track pool usage for performance monitoring
+  performanceStats.poolRequests++;
+  
+  if (pool && pool.length > 0) {
+    performanceStats.poolHits++;
+    return pool.pop();
+  }
+  
+  performanceStats.poolMisses++;
+  return createFn();
+}
+
+// Return an object to its pool
+function returnToPool(obj, pool, maxPoolSize) {
+  if (!pool) return;
+  
+  // Reset the object before returning it to pool
+  if (typeof obj.reset === 'function') {
+    obj.reset();
+  }
+  
+  // Only add to pool if we haven't reached the maximum size
+  if (pool.length < maxPoolSize) {
+    pool.push(obj);
+    performanceStats.objectsRecycled++;
+  }
+}
+
+// Create floating text for score and effects
+function createFloatingText(x, y, text, color = '#ffffff', size = 16, duration = 1500) {
+  // Get floating text from pool or create new one
+  const floatingText = getPooledObject(floatingTextPool, createEmptyFloatingText);
+  
+  // Set properties
+  floatingText.x = x;
+  floatingText.y = y;
+  floatingText.text = text;
+  floatingText.color = color;
+  floatingText.size = size;
+  floatingText.alpha = 1.0;
+  floatingText.scale = 1.0;
+  floatingText.velocity = {
+    x: (Math.random() - 0.5) * 2, // Add sideways movement
+    y: -3 - Math.random() * 2     // Upward movement with some randomness
+  };
+  floatingText.createdAt = performance.now();
+  floatingText.duration = duration + Math.random() * 500; // Add some randomness to duration
+  floatingText.alive = true;
+  
+  // Add to active array
+  floatingTexts.push(floatingText);
+  
+  return floatingText;
+}
+
+// Make the key functions available globally for testing
+window.preAllocateObjectPools = preAllocateObjectPools;
+window.getPooledObject = getPooledObject;
+window.returnToPool = returnToPool;
+window.createFloatingText = createFloatingText;
+window.bonusTargets = bonusTargets;
+window.spawnBonusTarget = spawnBonusTarget;
+window.updateBonusTargets = updateBonusTargets;
+window.drawBonusTargets = drawBonusTargets;
+
 // Game state constants
 const GAME_STATES = {
   TITLE: 'TITLE',
   PLAYING: 'PLAYING',
+  PAUSED: 'PAUSED',
   GAME_OVER: 'GAME_OVER'
 };
 let currentState = GAME_STATES.TITLE;
@@ -404,67 +832,127 @@ let lastTime = 0;
 let currInterval = 0;
 let deltaTime = 0;
 let missileSpawnTimer = 0;
+let playerLevel = 1; // Add player level tracking
 
 // Audio system
 const AUDIO = {
-  buttonClick: null,
-  cityDestroyed: null,
-  explosion: null,
-  gameOver: null,
-  levelUp: null,
-  missileLaunch: null,
-  loaded: false
+  loaded: false,
 };
+
+// Sound System
+let soundEnabled = true;
+const sounds = {};
+const audioContext = new (window.AudioContext || window.webkitAudioContext)();
 
 // Preload audio files
 function preloadAudio() {
-  try {
-    AUDIO.buttonClick = new Audio('button_click.wav');
-    AUDIO.cityDestroyed = new Audio('city_destroyed.wav');
-    AUDIO.explosion = new Audio('explosion.wav');
-    AUDIO.gameOver = new Audio('game_over.wav');
-    AUDIO.levelUp = new Audio('level_up.wav');
-    AUDIO.missileLaunch = new Audio('missile_launch.wav');
+  const soundFiles = {
+    'missileLaunch': 'sounds/missile_launch.mp3',
+    'explosion': 'sounds/explosion.mp3',
+    'gameOver': 'sounds/game_over.mp3',
+    'levelUp': 'sounds/level_up.mp3',
+    'buttonClick': 'sounds/button_click.mp3',
+    'cityDestroyed': 'sounds/city_destroyed.mp3',
+    'bonusTarget': 'sounds/bonus_target.mp3'
+  };
+
+  // Create a loading promise for each sound
+  const loadingPromises = [];
+
+  for (const [name, path] of Object.entries(soundFiles)) {
+    const loadPromise = fetch(path)
+      .then(response => response.arrayBuffer())
+      .then(arrayBuffer => audioContext.decodeAudioData(arrayBuffer))
+      .then(audioBuffer => {
+        sounds[name] = audioBuffer;
+        console.log(`Sound loaded: ${name}`);
+      })
+      .catch(error => {
+        console.error(`Failed to load sound ${name}: ${error.message}`);
+      });
     
-    // Set volume for all audio
-    Object.values(AUDIO).forEach(audio => {
-      if (audio && audio.volume !== undefined) {
-        audio.volume = 0.4;
-      }
+    loadingPromises.push(loadPromise);
+  }
+
+  // Wait for all sounds to load
+  Promise.all(loadingPromises)
+    .then(() => {
+      console.log('All sounds loaded successfully');
+      AUDIO.loaded = true;
+    })
+    .catch(error => {
+      console.error('Error loading sounds:', error);
+      AUDIO.loaded = false;
     });
+}
+
+// Play a sound with volume control and filtering
+function playSound(name, volume = 1.0, pitch = 1.0) {
+  if (!soundEnabled || !sounds[name]) return;
+  
+  try {
+    // Create source node
+    const source = audioContext.createBufferSource();
+    source.buffer = sounds[name];
     
-    AUDIO.loaded = true;
-    console.log('Audio files preloaded successfully');
-  } catch (e) {
-    console.warn('Audio preloading failed:', e);
-    AUDIO.loaded = false;
+    // Create gain node for volume control
+    const gainNode = audioContext.createGain();
+    gainNode.gain.value = volume;
+    
+    // Add low-pass filter for explosions to make them more impactful
+    if (name === 'explosion') {
+      const filter = audioContext.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.value = 1000;
+      filter.Q.value = 1;
+      
+      source.connect(filter);
+      filter.connect(gainNode);
+    } else {
+      source.connect(gainNode);
+    }
+    
+    // Set pitch (playback rate)
+    source.playbackRate.value = pitch;
+    
+    // Connect to destination and play
+    gainNode.connect(audioContext.destination);
+    source.start(0);
+    
+    return source;
+  } catch (error) {
+    console.error(`Error playing sound ${name}:`, error);
+    return null;
   }
 }
 
-// Play sound with error handling
-function playSound(soundName) {
-  if (!AUDIO.loaded || !AUDIO[soundName]) {
-    console.warn(`Cannot play sound: ${soundName} - not loaded`);
-    return;
+// Toggle sound on/off
+function toggleSound() {
+  soundEnabled = !soundEnabled;
+  const soundIcon = document.getElementById('sound-icon');
+  soundIcon.textContent = soundEnabled ? '🔊' : '🔇';
+  
+  // Resume AudioContext if it was suspended
+  if (soundEnabled && audioContext.state === 'suspended') {
+    audioContext.resume();
   }
   
-  try {
-    // Create a clone to allow overlapping sounds
-    const sound = AUDIO[soundName].cloneNode();
-    sound.volume = 0.4;
-    sound.play().catch(e => console.warn(`Failed to play ${soundName}:`, e));
-  } catch (e) {
-    console.warn(`Error playing ${soundName}:`, e);
+  // Play a test sound when enabled
+  if (soundEnabled) {
+    playSound('buttonClick', 0.5);
   }
 }
 
 // Plug Wallet Integration
+// These variables are now handled in wallet-integration.js
+// Use WalletIntegration.isConnected() and WalletIntegration.fee instead
 const GAME_WALLET_PID = 'ld5uj-tgxfi-jgmdx-ikekg-uu62k-dhhrf-s6jav-3sdbh-4yamx-yzwrs-pqe';
-const ICP_FEE = 0.01; // 0.01 ICP fee to play
-let walletConnected = false;
+// CHANGED: Variables moved to wallet-integration.js
+// const ICP_FEE = 0.01; // 0.01 ICP fee to play
+// let walletConnected = false;
 
 // Backend canister ID for high scores
-const BACKEND_CANISTER_ID = 'bd3sg-teaaa-aaaaa-qaaba-cai';
+const BACKEND_CANISTER_ID = 'xggp5-zqaaa-aaaao-qj7ya-cai';
 
 // Candid interface for the backend canister
 const idlFactory = ({ IDL }) => {
@@ -490,375 +978,40 @@ async function checkPlugWallet() {
   return true;
 }
 
-// Connect to Plug Wallet
-async function connectPlugWallet() {
-  try {
-    console.log("Attempting to connect to Plug Wallet...");
-    
-    // Verify plug wallet availability
-    if (!window.ic?.plug) {
-      console.error("Plug Wallet is not available");
-      alert("Please install the Plug Wallet extension to play this game. Visit https://plugwallet.ooo/ to download.");
-      return false;
+// Initialize the game on start button click
+document.getElementById('start-button').addEventListener('click', async function() {
+  // Connect wallet if needed
+  if (!WalletIntegration.isConnected()) {
+    const connected = await WalletIntegration.connect();
+    if (!connected) {
+      console.error("Failed to connect wallet");
+      return;
     }
-
-    // Check if using mock mode
-    const isMockMode = window.ic.plug.isMockMode && window.ic.plug.isMockMode();
-    if (isMockMode) {
-      console.log("Using mock Plug Wallet implementation - proceeding with simulated connection");
-    }
-    
-    // Frontend and backend canister IDs
-    const FRONTEND_CANISTER_ID = 'k7syt-ayaaa-aaaaj-qnn6q-cai';
-    
-    console.log("Requesting connection with whitelist:", [BACKEND_CANISTER_ID, FRONTEND_CANISTER_ID, GAME_WALLET_PID]);
-
-    try {
-      const connected = await window.ic.plug.requestConnect({
-        whitelist: [BACKEND_CANISTER_ID, FRONTEND_CANISTER_ID, GAME_WALLET_PID], // Include all needed canisters
-        host: 'https://icp0.io',
-      });
-
-      console.log("Connection result:", connected);
-
-      if (connected) {
-        console.log("Connected to Plug Wallet!");
-        
-        // In mock mode, skip principal check
-        if (!isMockMode) {
-          try {
-            const principal = await window.ic.plug.getPrincipal();
-            console.log("User principal:", principal.toString());
-          } catch (principalError) {
-            console.warn("Could not get principal, but proceeding:", principalError);
-          }
-        }
-        
-        walletConnected = true;
-        document.getElementById('wallet-button').textContent = "Wallet Connected";
-        document.getElementById('wallet-button').style.backgroundColor = "#45a049";
-        document.getElementById('start-button').disabled = false;
-        return true;
-      }
-    } catch (connectionError) {
-      console.error("Connection error:", connectionError);
-      
-      // In dev/test mode, allow proceeding despite errors
-      if (isMockMode) {
-        console.log("Mock mode - proceeding despite connection error");
-        walletConnected = true;
-        document.getElementById('wallet-button').textContent = "Mock Wallet Connected";
-        document.getElementById('wallet-button').style.backgroundColor = "#45a049";
-        document.getElementById('start-button').disabled = false;
-        return true;
-      }
-      
-      alert("Failed to connect to wallet: " + connectionError.message);
-      return false;
-    }
-    
-    console.error("Failed to connect to wallet");
-    return false;
-  } catch (error) {
-    console.error("Error connecting to Plug Wallet:", error);
-    alert("Error connecting to wallet: " + error.message);
-    return false;
   }
-}
-
-// Request payment from user
-async function requestPayment() {
-  try {
-    console.log("Payment process started");
-    
-    // Check if wallet is connected
-    if (!walletConnected) {
-      const connected = await connectPlugWallet();
-      if (!connected) {
-        alert("Please connect your wallet to play.");
-        return false;
-      }
-    }
-
-    // Verify Plug Wallet is available
-    if (!window.ic?.plug) {
-      alert("Plug Wallet extension is required to play. Please install it and refresh the page.");
-      return false;
-    }
-    
-    // Check if using mock mode
-    const isMockMode = window.ic.plug.isMockMode && window.ic.plug.isMockMode();
-    if (isMockMode) {
-      console.log("Using mock Plug Wallet implementation - proceeding with simulated payment");
-    }
-
-    try {
-      // Check balance
-      console.log("Checking balance...");
-      let icpBalance = 0;
-      
-      try {
-        const balance = await window.ic.plug.requestBalance();
-        console.log("Balance received:", balance);
-        
-        icpBalance = balance.find(b => b.symbol === 'ICP')?.amount || 0;
-        console.log("ICP Balance:", icpBalance);
-      } catch (balanceError) {
-        console.error("Balance check error:", balanceError);
-        
-        // In mock mode, continue with assumed balance
-        if (isMockMode) {
-          console.log("Mock mode - using simulated balance");
-          icpBalance = 100; // Simulate 100 ICP balance
-        } else {
-          throw balanceError; // Re-throw if not in mock mode
-        }
-      }
-      
-      if (parseFloat(icpBalance) < ICP_FEE) {
-        alert(`Insufficient ICP balance. You need at least ${ICP_FEE} ICP to play.`);
-        return false;
-      }
-      
-      // Request payment transfer
-      console.log("Requesting transfer of", ICP_FEE, "ICP");
-      const result = await window.ic.plug.requestTransfer({
-        to: GAME_WALLET_PID,
-        amount: ICP_FEE * 100000000, // Convert to e8s (ICP uses 10^8 precision)
-        memo: Date.now().toString(), // Use timestamp as memo
-      });
-      
-      console.log("Transfer result:", result);
-
-      if (result) {
-        console.log("Payment successful! Transferred", ICP_FEE, "ICP to", GAME_WALLET_PID);
-        
-        // Show success message
-        const successMsg = document.createElement('div');
-        successMsg.className = 'payment-success';
-        successMsg.textContent = `Payment of ${ICP_FEE} ICP successful!`;
-        document.getElementById('title-screen').appendChild(successMsg);
-        
-        // Remove message after animation completes
-        setTimeout(() => {
-          if (successMsg.parentNode) {
-            successMsg.parentNode.removeChild(successMsg);
-          }
-        }, 2000);
-        
-        return true;
-      }
-      
-      alert("Payment was declined or failed. Please try again.");
-      return false;
-    } catch (e) {
-      console.error("Payment error:", e);
-      
-      // In mock mode, allow proceeding despite errors
-      if (isMockMode) {
-        console.log("Mock mode - proceeding despite payment error");
-        
-        // Show success message
-        const successMsg = document.createElement('div');
-        successMsg.className = 'payment-success';
-        successMsg.textContent = `Mock payment of ${ICP_FEE} ICP successful!`;
-        document.getElementById('title-screen').appendChild(successMsg);
-        
-        // Remove message after animation completes
-        setTimeout(() => {
-          if (successMsg.parentNode) {
-            successMsg.parentNode.removeChild(successMsg);
-          }
-        }, 2000);
-        
-        return true;
-      }
-      
-      alert("Payment failed: " + e.message);
-      return false;
-    }
-  } catch (error) {
-    console.error("Payment process failed:", error);
-    alert("Payment failed: " + error.message);
-    return false;
-  }
-}
-
-// Constants
-const canvas = document.getElementById('game');
-const context = canvas.getContext('2d');
-const groundY = 500;
-const cityWidth = 45;
-const cityHeight = 25;
-const cityY = groundY - cityHeight;
-const siloY = groundY - 30;
-const missileSize = 4;
-const siloPos = [55, canvas.width / 2, 745];
-const counterMissileSpeed = 15;
-
-// Object pools for better memory management
-const missilePool = [];
-const counterMissilePool = [];
-const explosionPool = [];
-
-// Level configuration
-const LEVELS = [
-  {
-    name: "Level 1 - The Beginning",
-    missileSpeed: 0.5,  // Slower starting speed
-    missileCount: [3, 3],  // Fewer missiles to start
-    interval: 4000,  // Longer interval between waves
-    color: '#0000ff'
-  },
-  {
-    name: "Level 2 - Rising Threat",
-    missileSpeed: 0.7,
-    missileCount: [4, 4],
-    interval: 3500,
-    color: '#00ff00'
-  },
-  {
-    name: "Level 3 - Intensified",
-    missileSpeed: 0.9,
-    missileCount: [5, 5],
-    interval: 3000,
-    color: '#ffff00'
-  },
-  {
-    name: "Level 4 - Critical Mass",
-    missileSpeed: 1.1,
-    missileCount: [6, 6],
-    interval: 2500,
-    color: '#ff6600'
-  },
-  {
-    name: "Level 5 - Apocalypse",
-    missileSpeed: 1.3,
-    missileCount: [7, 7],
-    interval: 2000,
-    color: '#ff0000'
-  }
-];
-
-let currentLevel = 0;
-let levelComplete = false;
-let levelStartTime = 0;
-
-// Original city and silo configurations for reset
-const ORIGINAL_CITIES = [
-  { x: 140, y: cityY, alive: true, health: 3 },
-  { x: 220, y: cityY, alive: true, health: 3 },
-  { x: 300, y: cityY, alive: true, health: 3 },
-  { x: 500, y: cityY, alive: true, health: 3 },
-  { x: 580, y: cityY, alive: true, health: 3 },
-  { x: 660, y: cityY, alive: true, health: 3 }
-];
-
-const ORIGINAL_SILOS = [
-  { x: siloPos[0], y: siloY, missiles: 10, alive: true },
-  { x: siloPos[1], y: siloY, missiles: 10, alive: true },
-  { x: siloPos[2], y: siloY, missiles: 10, alive: true }
-];
-
-// Active game objects
-let cities = [];
-let silos = [];
-let missiles = [];
-let counterMissiles = [];
-let explosions = [];
-let missileSpawns = [];
-
-// Difficulty scaling
-let difficultyMultiplier = 1.0;
-let baseSpeed = [];
-
-// Bonus targets
-const BONUS_TARGETS = {
-  UFO: {
-    points: 100,
-    color: '#00ff00',
-    size: 20,
-    speed: 2,
-    spawnChance: 0.01
-  },
-  SATELITE: {
-    points: 200,
-    color: '#ff00ff',
-    size: 15,
-    speed: 3,
-    spawnChance: 0.005
-  }
-};
-
-let bonusTargets = [];
-let bonusTargetSpawnTimer = 0;
-const BONUS_TARGET_SPAWN_INTERVAL = 10000; // 10 seconds
-
-// Initialize game objects
-function initializeGameObjects() {
-  // Reset cities and silos from originals
-  cities = JSON.parse(JSON.stringify(ORIGINAL_CITIES));
-  silos = JSON.parse(JSON.stringify(ORIGINAL_SILOS));
   
-  // Initialize missile spawns
-  missileSpawns = [];
-  cities.concat(silos).forEach(obj => {
-    missileSpawns.push({ x: obj.x, y: 0 });
-  });
-  // Add edge spawns
-  missileSpawns.push({ x: 0, y: 0 }, { x: canvas.width, y: 0 });
-  
-  // Clear game object arrays
-  missiles = [];
-  counterMissiles = [];
-  explosions = [];
-  bonusTargets = [];
-  bonusTargetSpawnTimer = 0;
-}
-
-// Helper function to get object from pool or create new one
-function getPooledObject(pool, createFn) {
-  return pool.length > 0 ? pool.pop() : createFn();
-}
-
-// Game state management
-function updateGameState(newState) {
-  currentState = newState;
-  
-  // Update UI based on state
-  if (newState === GAME_STATES.TITLE) {
-    document.getElementById('title-screen').style.display = 'flex';
-    document.getElementById('game').classList.add('hidden');
-    document.getElementById('score-display').classList.add('hidden');
-    document.getElementById('missile-availability').classList.add('hidden');
-    document.getElementById('level-display').classList.add('hidden');
-    document.getElementById('game-over').style.display = 'none';
-    document.getElementById('game-over-popup').style.display = 'none';
-    
-    // Only enable the start button if wallet is connected
-    document.getElementById('start-button').disabled = !walletConnected;
-    document.getElementById('payment-info').style.display = 'block';
-    document.getElementById('wallet-button').style.display = 'block';
-    
-    // Fetch and display high scores
-    fetchHighScores().then(displayHighScores);
-  } else if (newState === GAME_STATES.PLAYING) {
-    document.getElementById('title-screen').style.display = 'none';
-    document.getElementById('game').classList.remove('hidden');
-    document.getElementById('score-display').classList.remove('hidden');
-    document.getElementById('missile-availability').classList.remove('hidden');
-    document.getElementById('level-display').classList.remove('hidden');
-    document.getElementById('game-over').style.display = 'none';
-    document.getElementById('game-over-popup').style.display = 'none';
-  } else if (newState === GAME_STATES.GAME_OVER) {
-    document.getElementById('title-screen').style.display = 'none';
-    document.getElementById('game').classList.remove('hidden');
-    document.getElementById('score-display').classList.remove('hidden');
-    document.getElementById('missile-availability').classList.remove('hidden');
-    document.getElementById('level-display').classList.remove('hidden');
-    document.getElementById('game-over').style.display = 'block';
+  // Process payment
+  const paymentSuccess = await WalletIntegration.requestPayment();
+  if (!paymentSuccess) {
+    console.error("Payment failed");
+    return;
   }
-}
+  
+  // Start the game
+  updateGameState(GAME_STATES.PLAYING);
+  
+  // Hide title screen
+  document.getElementById('title-screen').style.display = 'none';
+  
+  // Show game elements
+  document.getElementById('score-display').classList.remove('hidden');
+  document.getElementById('level-display').classList.remove('hidden');
+  document.getElementById('missile-availability').classList.remove('hidden');
+  document.getElementById('gameCanvas').classList.remove('hidden');
+  
+  // Start the game loop
+  lastTime = 0;
+  requestAnimationFrame(loop);
+});
 
 // Update level display
 function updateLevelDisplay() {
@@ -1025,6 +1178,15 @@ function updateAndDrawMissiles(time) {
     missile.pos.x += missile.dx;
     missile.pos.y += missile.dy;
 
+    // Check if missile is out of bounds
+    if (missile.pos.x < -10 || missile.pos.x > canvas.width + 10 || 
+        missile.pos.y < -10 || missile.pos.y > canvas.height + 10) {
+      missile.alive = false;
+      missiles.splice(i, 1);
+      missilePool.push(missile);
+      continue;
+    }
+
     // Check for explosion collisions
     let destroyed = false;
     for (let j = explosions.length - 1; j >= 0; j--) {
@@ -1085,14 +1247,17 @@ function updateAndDrawMissiles(time) {
 }
 
 // Create explosion using pool
-function createExplosion(x, y) {
+function createExplosion(x, y, maxSize = 30, color = null) {
   const explosion = getPooledObject(explosionPool, () => ({}));
   Object.assign(explosion, {
     x: x,
     y: y,
     size: 2,
+    maxSize: maxSize,
     dir: 1,
-    alive: true
+    alive: true,
+    color: color,
+    alpha: 1.0
   });
   explosions.push(explosion);
   
@@ -1100,6 +1265,8 @@ function createExplosion(x, y) {
   if (Math.random() < 0.4) {
     playSound('explosion');
   }
+  
+  return explosion;
 }
 
 // Update and draw counter missiles
@@ -1125,7 +1292,7 @@ function updateAndDrawCounterMissiles() {
       createExplosion(missile.pos.x, missile.pos.y);
       
       // Return to pool and remove from active list
-      counterMissilePool.push(missile);
+      returnPooledObject(counterMissilePool, missile);
       counterMissiles.splice(i, 1);
     }
     else {
@@ -1146,21 +1313,37 @@ function updateAndDrawExplosions() {
     
     // Update explosion size
     explosion.size += explosion.dir;
-    if (explosion.size > 30) {
+    
+    // Check if explosion reached max size
+    if (explosion.size > (explosion.maxSize || 30)) {
       explosion.dir = -1;
     } else if (explosion.size < 2 && explosion.dir === -1) {
       explosion.alive = false;
+    }
+    
+    // Calculate alpha for fade out effect
+    if (explosion.dir === -1) {
+      // Gradually reduce alpha as the explosion shrinks
+      explosion.alpha = Math.max(0, explosion.size / (explosion.maxSize || 30));
     }
     
     // Draw active explosions
     if (explosion.alive) {
       context.beginPath();
       context.arc(explosion.x, explosion.y, explosion.size, 0, Math.PI * 2);
-      context.strokeStyle = LEVELS[currentLevel].color;
+      
+      // Set opacity
+      context.globalAlpha = explosion.alpha;
+      
+      // Use custom color if provided, otherwise use level color
+      context.strokeStyle = explosion.color || LEVELS[currentLevel].color;
       context.stroke();
+      
+      // Reset opacity
+      context.globalAlpha = 1.0;
     } else {
       // Return to pool and remove from active list
-      explosionPool.push(explosion);
+      returnPooledObject(explosionPool, explosion);
       explosions.splice(i, 1);
     }
   }
@@ -1169,15 +1352,67 @@ function updateAndDrawExplosions() {
 // Update score display
 function updateScore(points) {
   const previousScore = score;
+  const previousLevel = playerLevel;
   score += points;
-  document.getElementById('score-display').textContent = `Score: ${score}`;
+  document.getElementById('score-display').textContent = `Score: ${score} | Level: ${playerLevel}`;
+  
+  // Calculate player level based on score (every 1000 points = 1 level)
+  playerLevel = Math.floor(score / 1000) + 1;
+  
+  // Check if player leveled up
+  if (playerLevel > previousLevel) {
+    // Level up - increase missiles per silo by 5 for each level above 1
+    const extraMissiles = (playerLevel - 1) * 5;
+    silos.forEach(silo => {
+      if (silo.alive) {
+        silo.missiles += 5;
+      }
+    });
+    
+    // Display level up message
+    const levelUpMessage = document.createElement('div');
+    levelUpMessage.textContent = `LEVEL UP! LEVEL ${playerLevel}`;
+    levelUpMessage.style.cssText = `
+      position: absolute;
+      top: 40%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: #00ffff;
+      font-size: 36px;
+      font-weight: bold;
+      text-shadow: 0 0 10px #00ffff;
+      z-index: 5;
+      opacity: 1;
+    `;
+    document.body.appendChild(levelUpMessage);
+    
+    // Play level up sound
+    playSound('levelUp');
+    
+    // Fade out the message after 2 seconds
+    let opacity = 1;
+    const fadeInterval = setInterval(() => {
+      opacity -= 0.05;
+      levelUpMessage.style.opacity = opacity;
+      
+      if (opacity <= 0) {
+        clearInterval(fadeInterval);
+        document.body.removeChild(levelUpMessage);
+      }
+    }, 100);
+    
+    // Update missile availability
+    updateMissileAvailability();
+  }
   
   // Check if player crossed a 500-point threshold for missile refill
   if (Math.floor(previousScore / 500) < Math.floor(score / 500)) {
-    // Refill all active silos to full missile count
+    // Refill all active silos to full missile count (10 base + 5 extra per level above 1)
+    const baseCount = 10;
+    const extraMissiles = (playerLevel - 1) * 5;
     silos.forEach(silo => {
       if (silo.alive) {
-        silo.missiles = 10;
+        silo.missiles = baseCount + extraMissiles;
       }
     });
     
@@ -1213,313 +1448,44 @@ function updateScore(points) {
     // Update missile availability
     updateMissileAvailability();
   }
-  
-  // Check if player crossed a 1050-point threshold for apocalypse message
-  if (Math.floor(previousScore / 1050) < Math.floor(score / 1050)) {
-    // Display apocalypse message
-    const apocalypseMessage = document.createElement('div');
-    apocalypseMessage.textContent = "WORLD 8 APOCALYPSE";
-    apocalypseMessage.style.cssText = `
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      color: #ff0000;
-      font-size: 48px;
-      font-weight: bold;
-      text-shadow: 0 0 15px #ff0000;
-      z-index: 5;
-      opacity: 1;
-    `;
-    document.body.appendChild(apocalypseMessage);
-    
-    // Fade out the message after 2 seconds
-    let opacity = 1;
-    const fadeInterval = setInterval(() => {
-      opacity -= 0.05;
-      apocalypseMessage.style.opacity = opacity;
-      
-      if (opacity <= 0) {
-        clearInterval(fadeInterval);
-        document.body.removeChild(apocalypseMessage);
-      }
-    }, 100);
-  }
-  
-  // Check if player crossed a 300-point threshold for difficulty increase
-  if (Math.floor(previousScore / 300) < Math.floor(score / 300)) {
-    // Increase difficulty by 10% (changed from 3%)
-    difficultyMultiplier *= 1.10;
-    
-    // Update missile speeds for all levels
-    for (let i = 0; i < LEVELS.length; i++) {
-      LEVELS[i].missileSpeed = baseSpeed[i] * difficultyMultiplier;
-    }
-    
-    // Display difficulty increase message
-    const difficultyMessage = document.createElement('div');
-    difficultyMessage.textContent = "DIFFICULTY INCREASED!";
-    difficultyMessage.style.cssText = `
-      position: absolute;
-      top: 60%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      color: #ff9900;
-      font-size: 24px;
-      font-weight: bold;
-      text-shadow: 0 0 10px #ff9900;
-      z-index: 5;
-      opacity: 1;
-    `;
-    document.body.appendChild(difficultyMessage);
-    
-    // Fade out the message after 2 seconds
-    let opacity = 1;
-    const fadeInterval = setInterval(() => {
-      opacity -= 0.05;
-      difficultyMessage.style.opacity = opacity;
-      
-      if (opacity <= 0) {
-        clearInterval(fadeInterval);
-        document.body.removeChild(difficultyMessage);
-      }
-    }, 100);
-  }
-}
-
-// Award bonus points when level is completed
-function awardBonusPoints() {
-  // Points for surviving cities
-  const cityPoints = cities.filter(city => city.alive).length * 100;
-  
-  // Points for remaining missiles
-  let missilePoints = 0;
-  silos.forEach(silo => {
-    if (silo.alive) {
-      missilePoints += silo.missiles * 5;
-    }
-  });
-  
-  // Total bonus
-  const totalBonus = cityPoints + missilePoints;
-  updateScore(totalBonus);
-  
-  // Show bonus points message
-  const bonusMessage = document.createElement('div');
-  bonusMessage.innerHTML = `LEVEL COMPLETED!<br>BONUS POINTS: ${totalBonus}`;
-  bonusMessage.style.cssText = `
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    color: #ffff00;
-    font-size: 36px;
-    font-weight: bold;
-    text-shadow: 0 0 10px #ffff00;
-    z-index: 5;
-    opacity: 1;
-    text-align: center;
-  `;
-  document.body.appendChild(bonusMessage);
-  
-  // Play level up sound
-  playSound('levelUp');
-  
-  // Fade out the message after 2 seconds
-  let opacity = 1;
-  const fadeInterval = setInterval(() => {
-    opacity -= 0.05;
-    bonusMessage.style.opacity = opacity;
-    
-    if (opacity <= 0) {
-      clearInterval(fadeInterval);
-      document.body.removeChild(bonusMessage);
-      
-      // Proceed to next level
-      currentLevel = (currentLevel + 1) % LEVELS.length;
-      currInterval = 0;
-      levelComplete = false;
-      updateLevelDisplay();
-    }
-  }, 100);
-}
-
-// Modify check game over to include wallet messaging
-function checkGameOver() {
-  const citiesAlive = cities.some(city => city.alive);
-  const silosAlive = silos.some(silo => silo.alive);
-  
-  if (!citiesAlive || !silosAlive) {
-    gameOver = true;
-    document.getElementById('game-over').style.display = 'block';
-    document.getElementById('restart-button').style.display = 'block';
-    updateGameState(GAME_STATES.GAME_OVER);
-    
-    // Flash the game over message for attention
-    let opacity = 1;
-    let direction = -0.1;
-    const flashInterval = setInterval(() => {
-      const gameOverElement = document.getElementById('game-over');
-      gameOverElement.style.opacity = opacity;
-      
-      opacity += direction;
-      if (opacity <= 0.3) {
-        direction = 0.1;
-      } else if (opacity >= 1) {
-        direction = -0.1;
-      }
-    }, 100);
-    
-    // Display the enhanced pop-up message after a short delay
-    setTimeout(() => {
-      const popup = document.getElementById('game-over-popup');
-      popup.style.display = 'flex';
-      
-      // Add message about payment for restart
-      const paymentInfo = document.createElement('div');
-      paymentInfo.style.color = 'white';
-      paymentInfo.style.fontSize = '16px';
-      paymentInfo.style.marginBottom = '15px';
-      paymentInfo.textContent = `Pay ${ICP_FEE} ICP to play again`;
-      
-      // Insert before the button
-      const content = document.getElementById('game-over-popup-content');
-      const button = document.getElementById('game-over-popup-button');
-      content.insertBefore(paymentInfo, button);
-      
-      // Add shake effect
-      document.body.classList.add('shake');
-      setTimeout(() => {
-        document.body.classList.remove('shake');
-      }, 500);
-      
-      // Play explosion sound effect if available
-      playSound('gameOver');
-    }, 1000);
-    
-    // Log for debugging
-    console.log("Game Over triggered. Cities alive:", citiesAlive, "Silos alive:", silosAlive);
-  }
-}
-
-// Bonus Target class
-class BonusTarget {
-  constructor(type) {
-    this.type = type;
-    this.x = Math.random() * canvas.width;
-    this.y = 0;
-    this.speed = BONUS_TARGETS[type].speed;
-    this.size = BONUS_TARGETS[type].size;
-    this.points = BONUS_TARGETS[type].points;
-    this.color = BONUS_TARGETS[type].color;
-    this.direction = Math.random() < 0.5 ? 1 : -1;
-  }
-
-  update() {
-    this.y += this.speed;
-    this.x += this.speed * this.direction;
-    
-    // Bounce off screen edges
-    if (this.x < 0 || this.x > canvas.width) {
-      this.direction *= -1;
-    }
-  }
-
-  draw() {
-    context.beginPath();
-    context.fillStyle = this.color;
-    if (this.type === 'UFO') {
-      // Draw UFO shape
-      context.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-      context.fill();
-      context.beginPath();
-      context.arc(this.x, this.y - this.size/2, this.size/2, 0, Math.PI);
-      context.fill();
-    } else if (this.type === 'SATELITE') {
-      // Draw satellite shape
-      context.rect(this.x - this.size/2, this.y - this.size/2, this.size, this.size);
-      context.fill();
-      context.beginPath();
-      context.moveTo(this.x - this.size, this.y);
-      context.lineTo(this.x + this.size, this.y);
-      context.strokeStyle = this.color;
-      context.lineWidth = 2;
-      context.stroke();
-    }
-  }
-
-  isHit(x, y) {
-    const distance = Math.sqrt(
-      Math.pow(x - this.x, 2) + Math.pow(y - this.y, 2)
-    );
-    return distance < this.size;
-  }
-}
-
-// Spawn bonus targets
-function spawnBonusTarget() {
-  const random = Math.random();
-  let type = null;
-  
-  if (random < BONUS_TARGETS.SATELITE.spawnChance) {
-    type = 'SATELITE';
-  } else if (random < BONUS_TARGETS.UFO.spawnChance) {
-    type = 'UFO';
-  }
-  
-  if (type) {
-    bonusTargets.push(new BonusTarget(type));
-  }
 }
 
 // Update bonus targets
 function updateBonusTargets() {
   bonusTargetSpawnTimer += deltaTime;
-  if (bonusTargetSpawnTimer >= BONUS_TARGET_SPAWN_INTERVAL) {
+  
+  // Spawn new bonus targets periodically, with increased frequency based on player level
+  const adjustedInterval = BONUS_TARGET_SPAWN_INTERVAL * (1 - (playerLevel * 0.05));
+  if (bonusTargetSpawnTimer >= adjustedInterval) {
     spawnBonusTarget();
     bonusTargetSpawnTimer = 0;
   }
-
+  
+  // Update position and animation of existing bonus targets
   for (let i = bonusTargets.length - 1; i >= 0; i--) {
     const target = bonusTargets[i];
-    target.update();
     
-    // Remove targets that go off screen
-    if (target.y > canvas.height) {
-      bonusTargets.splice(i, 1);
-      continue;
+    // Skip inactive targets
+    if (!target.alive) continue;
+    
+    // Update position based on direction and speed
+    target.y += target.speed;
+    target.x += target.speed * target.direction * 0.5;
+    target.timeAlive += deltaTime;
+    
+    // Bounce off screen edges
+    if (target.x < target.size || target.x > canvas.width - target.size) {
+      target.direction *= -1;
     }
     
-    // Check for hits with counter-missiles
-    for (let j = counterMissiles.length - 1; j >= 0; j--) {
-      const missile = counterMissiles[j];
-      if (target.isHit(missile.pos.x, missile.pos.y)) {
-        // Award points
-        updateScore(target.points);
-        
-        // Create explosion effect
-        const explosion = getPooledObject(explosionPool, () => ({}));
-        Object.assign(explosion, {
-          x: target.x,
-          y: target.y,
-          size: target.size * 2,
-          dir: 1,
-          color: target.color,
-          alive: true
-        });
-        explosions.push(explosion);
-        
-        // Remove target and missile
-        bonusTargets.splice(i, 1);
-        
-        // Return missile to pool
-        missile.alive = false;
-        activeCounterMissiles--;
-        updateMissileAvailability();
-        counterMissilePool.push(missile);
-        counterMissiles.splice(j, 1);
-        break;
-      }
+    // Update rotation
+    target.rotation += target.rotationSpeed;
+    
+    // Remove if it goes off the bottom of the screen
+    if (target.y > canvas.height + target.size) {
+      target.alive = false;
+      returnPooledObject(bonusTargetPool, target);
+      bonusTargets.splice(i, 1);
     }
   }
 }
@@ -1533,6 +1499,211 @@ function drawBonusTargets() {
 function initializeBaseSpeeds() {
   baseSpeed = LEVELS.map(level => level.missileSpeed);
 }
+
+// Check for level completion
+// IMPROVED: More reliable level completion check
+function checkLevelCompletion() {
+  // Level is complete when:
+  // 1. We've spawned all missiles for the level (currInterval reached end of array)
+  // 2. There are no active enemy missiles on screen
+  // 3. We haven't already triggered level completion
+  
+  const level = LEVELS[currentLevel];
+  const allMissilesLaunched = currInterval >= level.missileCount.length;
+  const noActiveMissiles = missiles.filter(m => m.alive).length === 0;
+  
+  if (!levelComplete && allMissilesLaunched && noActiveMissiles) {
+    levelComplete = true;
+    // Log for debugging
+    if (isDebugMode) {
+      debugLog(`Level ${currentLevel + 1} completed. Awarding bonus points.`);
+    }
+    
+    // Check for difficulty increase threshold
+    const previousScore = score;
+    awardBonusPoints();
+    
+    // Check if we crossed a difficulty threshold (every 300 points)
+    if (Math.floor(previousScore / 300) < Math.floor(score / 300)) {
+      // Increase difficulty by 10%
+      difficultyMultiplier *= 1.1;
+      
+      // Show message
+      const difficultyMsg = document.createElement('div');
+      difficultyMsg.className = 'game-message';
+      difficultyMsg.textContent = 'DIFFICULTY INCREASED!';
+      difficultyMsg.style.color = '#ff0000';
+      document.getElementById('gameCanvas').appendChild(difficultyMsg);
+      
+      // Remove after 2 seconds
+      setTimeout(() => {
+        if (difficultyMsg.parentNode) {
+          difficultyMsg.parentNode.removeChild(difficultyMsg);
+        }
+      }, 2000);
+      
+      // Expose the difficulty change for testing
+      window.lastDifficultyIncrease = {
+        previousScore,
+        newScore: score,
+        newMultiplier: difficultyMultiplier
+      };
+    }
+    
+    return true;
+  }
+  return false;
+}
+
+// Initialize performance stats object
+const performanceStats = {
+  fps: 0,
+  frameTime: 0,
+  fpsHistory: [],
+  fpsHistoryMaxLength: 60, // Store 1 minute of fps data at 60fps
+  objectCounts: {
+    missiles: 0,
+    counterMissiles: 0,
+    explosions: 0,
+    floatingTexts: 0,
+    bonusTargets: 0
+  },
+  poolSizes: {
+    missilePool: 0,
+    counterMissilePool: 0,
+    explosionPool: 0,
+    floatingTextPool: 0,
+    bonusTargetPool: 0
+  },
+  lastCollisionCount: 0,
+  totalFrames: 0,
+  poolRequests: 0,
+  poolHits: 0,
+  poolMisses: 0,
+  objectsRecycled: 0,
+  collisionsChecked: 0
+};
+
+// Performance monitor element
+let performanceMonitor = null;
+
+// Initialize performance monitor
+function initializePerformanceMonitor() {
+  // Create monitor element if it doesn't exist
+  if (!performanceMonitor) {
+    performanceMonitor = document.createElement('div');
+    performanceMonitor.id = 'performance-monitor';
+    performanceMonitor.style.cssText = `
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background-color: rgba(0, 0, 0, 0.7);
+      color: #00ff00;
+      font-family: monospace;
+      font-size: 12px;
+      padding: 10px;
+      border-radius: 5px;
+      z-index: 100;
+      display: none;
+    `;
+    document.body.appendChild(performanceMonitor);
+    
+    // Add toggle button
+    const toggleButton = document.createElement('button');
+    toggleButton.textContent = 'FPS';
+    toggleButton.style.cssText = `
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background-color: rgba(0, 0, 0, 0.7);
+      color: #00ff00;
+      border: 1px solid #00ff00;
+      padding: 5px;
+      border-radius: 5px;
+      cursor: pointer;
+      z-index: 101;
+    `;
+    toggleButton.addEventListener('click', () => {
+      const monitor = document.getElementById('performance-monitor');
+      if (monitor) {
+        monitor.style.display = monitor.style.display === 'none' ? 'block' : 'none';
+      }
+    });
+    document.body.appendChild(toggleButton);
+  }
+  
+  // Initialize global performance monitor for tests if available
+  if (typeof window.PerformanceMonitor !== 'undefined') {
+    window.performanceMonitor = new window.PerformanceMonitor();
+  }
+}
+
+// Update performance stats
+function updatePerformanceStats(deltaTime) {
+  // Calculate FPS and frame time
+  performanceStats.frameTime = deltaTime;
+  performanceStats.fps = Math.round(1000 / deltaTime);
+  performanceStats.totalFrames++;
+  
+  // Store in history for average calculation
+  performanceStats.fpsHistory.push(performanceStats.fps);
+  if (performanceStats.fpsHistory.length > performanceStats.fpsHistoryMaxLength) {
+    performanceStats.fpsHistory.shift();
+  }
+  
+  // Update object counts
+  performanceStats.objectCounts.missiles = missiles ? missiles.length : 0;
+  performanceStats.objectCounts.counterMissiles = counterMissiles ? counterMissiles.length : 0;
+  performanceStats.objectCounts.explosions = explosions ? explosions.length : 0;
+  performanceStats.objectCounts.floatingTexts = floatingTexts ? floatingTexts.length : 0;
+  performanceStats.objectCounts.bonusTargets = bonusTargets ? bonusTargets.length : 0;
+  
+  // Update pool sizes
+  performanceStats.poolSizes.missilePool = missilePool ? missilePool.length : 0;
+  performanceStats.poolSizes.counterMissilePool = counterMissilePool ? counterMissilePool.length : 0;
+  performanceStats.poolSizes.explosionPool = explosionPool ? explosionPool.length : 0;
+  performanceStats.poolSizes.floatingTextPool = floatingTextPool ? floatingTextPool.length : 0;
+  performanceStats.poolSizes.bonusTargetPool = bonusTargetPool ? bonusTargetPool.length : 0;
+  
+  // Update display if it's visible
+  if (performanceMonitor && performanceMonitor.style.display !== 'none') {
+    // Calculate average FPS
+    const avgFps = Math.round(
+      performanceStats.fpsHistory.reduce((a, b) => a + b, 0) / 
+      performanceStats.fpsHistory.length
+    );
+    
+    performanceMonitor.innerHTML = `
+      <strong>PERFORMANCE STATS</strong><br>
+      FPS: ${performanceStats.fps} (Avg: ${avgFps})<br>
+      Frame Time: ${performanceStats.frameTime.toFixed(2)}ms<br>
+      <br>
+      <strong>ACTIVE OBJECTS</strong><br>
+      Missiles: ${performanceStats.objectCounts.missiles}<br>
+      Counter Missiles: ${performanceStats.objectCounts.counterMissiles}<br>
+      Explosions: ${performanceStats.objectCounts.explosions}<br>
+      Floating Texts: ${performanceStats.objectCounts.floatingTexts}<br>
+      Bonus Targets: ${performanceStats.objectCounts.bonusTargets}<br>
+      <br>
+      <strong>POOL SIZES</strong><br>
+      Missile Pool: ${performanceStats.poolSizes.missilePool}<br>
+      Counter Missile Pool: ${performanceStats.poolSizes.counterMissilePool}<br>
+      Explosion Pool: ${performanceStats.poolSizes.explosionPool}<br>
+      Floating Text Pool: ${performanceStats.poolSizes.floatingTextPool}<br>
+      Bonus Target Pool: ${performanceStats.poolSizes.bonusTargetPool}
+    `;
+  }
+  
+  // Update global performance monitor if available
+  if (window.performanceMonitor && typeof window.performanceMonitor.recordFrame === 'function') {
+    window.performanceMonitor.recordFrame(performance.now());
+  }
+}
+
+// Expose function to window for testing
+window.performanceStats = performanceStats;
+window.initializePerformanceMonitor = initializePerformanceMonitor;
+window.updatePerformanceStats = updatePerformanceStats;
 
 // Main game loop
 function loop(time) {
@@ -1551,7 +1722,12 @@ function loop(time) {
   deltaTime = time - lastTime;
   lastTime = time;
 
-  context.clearRect(0, 0, canvas.width, canvas.height);
+  // Update performance stats
+  updatePerformanceStats(deltaTime);
+
+  // Clear the canvas
+  const context = gameCanvas.getContext('2d');
+  context.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
 
   const level = LEVELS[currentLevel];
 
@@ -1570,11 +1746,8 @@ function loop(time) {
     currInterval = 0;
   }
 
-  // Check for level completion
-  if (!levelComplete && currInterval >= level.missileCount.length && missiles.length === 0) {
-    levelComplete = true;
-    awardBonusPoints();
-  }
+  // IMPROVED: Use the reliable level completion check
+  checkLevelCompletion();
 
   // Update and draw game elements
   drawCities();
@@ -1582,13 +1755,89 @@ function loop(time) {
   updateAndDrawMissiles(time);
   updateAndDrawCounterMissiles();
   updateAndDrawExplosions();
+  
+  // IMPROVED: Check for collisions with enhanced detection
+  checkMissileExplosionCollisions();
+  checkBonusTargetCollisions();
+  
+  // IMPROVED: Update and draw floating score texts
+  updateAndDrawFloatingTexts();
+  
+  // Update and draw bonus targets
   updateBonusTargets();
   drawBonusTargets();
 }
 
+// Initialize game upon window load
+window.onload = function() {
+  // Create game canvas context
+  gameCanvas = document.getElementById('gameCanvas');
+  context = gameCanvas.getContext('2d');
+  
+  // Set game dimensions (responsive)
+  resizeCanvas();
+  
+  // Add event listener for window resize
+  window.addEventListener('resize', resizeCanvas);
+  
+  // Initialize performance monitor
+  initializePerformanceMonitor();
+  
+  // Add event listeners for buttons
+  document.getElementById('start-button').addEventListener('click', function() {
+    // Initialize object pools before starting the game
+    preAllocateObjectPools();
+    
+    // Start the game
+    initializeGameObjects();
+    updateGameState(GAME_STATES.PLAYING);
+    
+    // Reset game time variables
+    lastTime = 0;
+    
+    // Start the game loop
+    requestAnimationFrame(loop);
+  });
+  
+  // Pre-compute base speeds for levels
+  initializeBaseSpeeds();
+  
+  // Set initial game state
+  updateGameState(GAME_STATES.TITLE);
+  
+  // Create background city
+  createCityBackground();
+  
+  // Activate debug mode if needed
+  if (debugModeEnabled) {
+    activateDebugMode();
+  }
+  
+  // Create pixel art smoke trails
+  createSmokeTrailTexture();
+  
+  // Pre-allocate object pools for better performance
+  preAllocateObjectPools();
+  
+  // Connect wallet if available
+  if (typeof connectWallet === 'function') {
+    connectWallet().then(() => {
+      document.getElementById('start-button').disabled = false;
+    }).catch(err => {
+      console.error("Error connecting wallet:", err);
+    });
+  } else {
+    // Debug mode - allow playing without wallet
+    console.log("Wallet connection not available, proceeding in debug mode");
+    walletConnected = true;
+    document.getElementById('start-button').disabled = false;
+  }
+};
+
 // Restart the game with optimized object handling
 function restartGame() {
   score = 0;
+  playerLevel = 1; // Reset player level to 1
   gameOver = false;
   activeCounterMissiles = 0;
   currentLevel = 0;
@@ -1610,7 +1859,7 @@ function restartGame() {
   // Hide game over screen
   document.getElementById('game-over').style.display = 'none';
   document.getElementById('restart-button').style.display = 'none';
-  document.getElementById('score-display').textContent = 'Score: 0';
+  document.getElementById('score-display').textContent = 'Score: 0 | Level: 1'; // Update score display with player level
   
   // Reset game objects
   initializeGameObjects();
@@ -1619,6 +1868,7 @@ function restartGame() {
   missiles.length = 0;
   counterMissiles.length = 0;
   explosions.length = 0;
+  floatingTexts.length = 0;
   bonusTargets.length = 0;
   bonusTargetSpawnTimer = 0;
   
@@ -1628,7 +1878,7 @@ function restartGame() {
   updateMissileAvailability();
   
   // Log reset for debugging
-  console.log("Game reset. Cities:", cities.length, "Silos:", silos.length);
+  console.log("Game reset. Cities:", cities.length, "Silos:", silos.length, "Player Level:", playerLevel);
 }
 
 // Draw pixel art city background
@@ -1746,11 +1996,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }, 30000);
   
   // Connect wallet button
-  document.getElementById('wallet-button').addEventListener('click', async () => {
-    // Play button click sound
+  document.getElementById('wallet-button').addEventListener('click', async function() {
     playSound('buttonClick');
     
-    await connectPlugWallet();
+    await WalletIntegration.connect();
   });
   
   // Add start button event listener with payment
@@ -1761,7 +2010,7 @@ document.addEventListener('DOMContentLoaded', () => {
     playSound('buttonClick');
     
     // Request payment before starting the game
-    const paymentSuccess = await requestPayment();
+    const paymentSuccess = await WalletIntegration.requestPayment();
     if (paymentSuccess) {
       restartGame();
       updateGameState(GAME_STATES.PLAYING);
@@ -1774,7 +2023,7 @@ document.addEventListener('DOMContentLoaded', () => {
     playSound('buttonClick');
     
     // Request payment before restarting
-    const paymentSuccess = await requestPayment();
+    const paymentSuccess = await WalletIntegration.requestPayment();
     if (paymentSuccess) {
       restartGame();
     }
@@ -1788,31 +2037,19 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('game-over-popup').style.display = 'none';
     
     // Request payment before restarting
-    const paymentSuccess = await requestPayment();
+    const paymentSuccess = await WalletIntegration.requestPayment();
     if (paymentSuccess) {
       restartGame();
     }
   });
   
-  // Add return to start button listener
-  document.getElementById('return-to-start-button').addEventListener('click', () => {
-    // Play button click sound
-    playSound('buttonClick');
-    
-    // Hide game over popup
-    document.getElementById('game-over-popup').style.display = 'none';
-    
-    // Return to title screen
-    score = 0;
-    gameOver = false;
-    
-    // Reset game objects for a clean state
-    initializeGameObjects();
-    updateGameState(GAME_STATES.TITLE);
-  });
-  
   // Start the game loop
   requestAnimationFrame(loop);
+  
+  // Add sound toggle button listener
+  document.getElementById('sound-toggle').addEventListener('click', () => {
+    toggleSound();
+  });
 });
 
 // Update background when window resizes
@@ -1939,7 +2176,7 @@ async function fetchHighScores() {
 
 // Function to display high scores
 function displayHighScores(scores) {
-  console.log('Displaying high scores:', scores);
+  console.log('High scores data loaded:', scores);
   const highScoresList = document.getElementById('high-scores-list');
   if (!highScoresList) {
     console.error('High scores list element not found!');
@@ -1953,10 +2190,13 @@ function displayHighScores(scores) {
     return;
   }
   
+  // Store scores in local variable that can be accessed by other functions
+  window.cachedHighScores = scores;
+  
   // Sort scores in descending order
   scores.sort((a, b) => b.score - a.score);
   
-  // Display top 5 scores
+  // Populate the hidden list (will be used when navigating to high-score.html)
   scores.slice(0, 5).forEach((score, index) => {
     const li = document.createElement('li');
     li.innerHTML = `
@@ -1965,6 +2205,12 @@ function displayHighScores(scores) {
     `;
     highScoresList.appendChild(li);
   });
+  
+  // Hide loading message
+  const loadingElement = document.getElementById('high-scores-loading');
+  if (loadingElement) {
+    loadingElement.style.display = 'none';
+  }
 }
 
 // Add this function to manually test high scores display
@@ -1977,6 +2223,860 @@ function testHighScores() {
     { player: "Test5", score: 2000, level: 1, timestamp: Date.now() }
   ];
   displayHighScores(testScores);
+}
+
+// Submit high score
+async function submitHighScore(playerName, finalScore, finalLevel) {
+  try {
+    // If high score system is available, submit the score
+    if (window.highScoreSystem && typeof window.highScoreSystem.submit === 'function') {
+      const result = await window.highScoreSystem.submit(playerName, finalScore, finalLevel);
+      if (result) {
+        console.log("High score submitted successfully!");
+        return true;
+      } else {
+        console.error("Failed to submit high score: " + window.highScoreSystem.getLastError());
+        return false;
+      }
+    } else {
+      console.error("High score system not available");
+      return false;
+    }
+  } catch (error) {
+    console.error("Error submitting high score:", error);
+    return false;
+  }
+}
+
+const GAME_VERSION = 'v1.2.0'; // Version tracking for deployment
+
+// Check for debug mode from URL parameters
+const urlParams = new URLSearchParams(window.location.search);
+const isDebugMode = urlParams.get('debug') === 'true';
+
+// Debug state
+const debugState = {
+  isActive: isDebugMode,
+  logEntries: [],
+  gameLoopTime: 0,
+  frameCount: 0,
+  lastFpsUpdate: 0,
+  currentFps: 0,
+  invincible: false,
+  originalGameOver: null // Will store reference to original gameOver function
+};
+
+// Debug initialization
+function initDebugMode() {
+  if (!isDebugMode) return;
+  
+  // Show debug overlay and test button
+  const debugOverlay = document.getElementById('debug-overlay');
+  const testButton = document.querySelector('.toggle-tests-button');
+  if (debugOverlay) debugOverlay.style.display = 'block';
+  if (testButton) testButton.style.display = 'block';
+  
+  // Set up debug log
+  debugState.logEntries = ['Debug mode activated'];
+  debugLog('System initialized');
+  
+  // Hook into game loop for performance metrics
+  const originalRequestAnimationFrame = window.requestAnimationFrame;
+  window.requestAnimationFrame = function(callback) {
+    return originalRequestAnimationFrame((timestamp) => {
+      const start = performance.now();
+      callback(timestamp);
+      debugState.gameLoopTime = performance.now() - start;
+      debugState.frameCount++;
+      
+      // Update FPS counter once per second
+      if (timestamp - debugState.lastFpsUpdate > 1000) {
+        debugState.currentFps = Math.round(debugState.frameCount / ((timestamp - debugState.lastFpsUpdate) / 1000));
+        debugState.frameCount = 0;
+        debugState.lastFpsUpdate = timestamp;
+        updateDebugInfo();
+      }
+    });
+  };
+  
+  // Set up debug buttons
+  setupDebugControls();
+  
+  // First update of debug info
+  updateDebugInfo();
+  
+  debugLog('Debug controls initialized');
+}
+
+// Update debug information in the overlay
+function updateDebugInfo() {
+  if (!isDebugMode) return;
+  
+  try {
+    // Update game info
+    document.getElementById('debug-game-state').textContent = window.gameState || 'Unknown';
+    document.getElementById('debug-fps').textContent = debugState.currentFps;
+    document.getElementById('debug-render-time').textContent = debugState.gameLoopTime.toFixed(2) + 'ms';
+    
+    // Update object stats if objects exist
+    if (window.missiles) {
+      const activeMissiles = window.missiles.filter(m => m.alive).length;
+      document.getElementById('debug-missiles').textContent = `${activeMissiles}/${window.missiles.length}`;
+    }
+    
+    if (window.counterMissiles) {
+      const activeCounterMissiles = window.counterMissiles.filter(m => m.alive).length;
+      document.getElementById('debug-counter-missiles').textContent = `${activeCounterMissiles}/${window.counterMissiles.length}`;
+    }
+    
+    if (window.explosions) {
+      const activeExplosions = window.explosions.filter(e => e.alive).length;
+      document.getElementById('debug-explosions').textContent = `${activeExplosions}/${window.explosions.length}`;
+    }
+    
+    // Update wallet status
+    if (window.PlugWalletAPI) {
+      document.getElementById('debug-wallet-connected').textContent = window.PlugWalletAPI.isConnected() ? 'Yes' : 'No';
+      document.getElementById('debug-wallet-mock').textContent = window.PlugWalletAPI.isMockMode() ? 'Yes' : 'No';
+    }
+    
+    if (window.GamePayment) {
+      document.getElementById('debug-recent-payment').textContent = window.GamePayment.hasRecentPayment() ? 'Yes' : 'No';
+    }
+  } catch (e) {
+    debugLog('Error updating debug info: ' + e.message);
+  }
+}
+
+// Add entry to debug log
+function debugLog(message) {
+  if (!isDebugMode) return;
+  
+  // Add timestamp to message
+  const timestamp = new Date().toLocaleTimeString();
+  const formattedMessage = `[${timestamp}] ${message}`;
+  
+  // Add to log entries array (max 50 entries)
+  debugState.logEntries.unshift(formattedMessage);
+  if (debugState.logEntries.length > 50) {
+    debugState.logEntries.pop();
+  }
+  
+  // Update log display
+  const debugLogElement = document.getElementById('debug-log');
+  if (debugLogElement) {
+    debugLogElement.innerHTML = debugState.logEntries
+      .map(entry => `<div class="debug-log-entry">${entry}</div>`)
+      .join('');
+  }
+  
+  // Also log to console
+  console.log('[DEBUG] ' + message);
+}
+
+// Set up debug control buttons
+function setupDebugControls() {
+  // Spawn missile button
+  document.getElementById('debug-spawn-missile').addEventListener('click', () => {
+    if (window.spawnMissile) {
+      window.spawnMissile();
+      debugLog('Manual missile spawn triggered');
+    }
+  });
+  
+  // Add score button
+  document.getElementById('debug-add-score').addEventListener('click', () => {
+    if (typeof window.score !== 'undefined') {
+      window.score += 100;
+      updateScore();
+      debugLog('Added 100 to score: ' + window.score);
+    }
+  });
+  
+  // Next level button
+  document.getElementById('debug-next-level').addEventListener('click', () => {
+    if (window.advanceToNextLevel) {
+      window.advanceToNextLevel();
+      debugLog('Advanced to next level: ' + window.currentLevel);
+    }
+  });
+  
+  // Toggle invincible button
+  const invincibleButton = document.getElementById('debug-toggle-invincible');
+  invincibleButton.addEventListener('click', () => {
+    debugState.invincible = !debugState.invincible;
+    invincibleButton.textContent = 'Invincible: ' + (debugState.invincible ? 'On' : 'Off');
+    debugLog('Invincibility ' + (debugState.invincible ? 'enabled' : 'disabled'));
+    
+    // Replace gameOver function if needed
+    if (debugState.invincible && !debugState.originalGameOver) {
+      debugState.originalGameOver = window.gameOver;
+      window.gameOver = function() {
+        debugLog('Game over prevented by invincibility');
+      };
+    } else if (!debugState.invincible && debugState.originalGameOver) {
+      window.gameOver = debugState.originalGameOver;
+      debugState.originalGameOver = null;
+    }
+  });
+  
+  // Kill city button
+  document.getElementById('debug-kill-city').addEventListener('click', () => {
+    if (window.cities && window.cities.length > 0) {
+      const aliveCity = window.cities.find(city => city.alive);
+      if (aliveCity) {
+        aliveCity.alive = false;
+        debugLog('Killed city at position: ' + aliveCity.x);
+      } else {
+        debugLog('No alive cities found');
+      }
+    }
+  });
+  
+  // Refresh missiles button
+  document.getElementById('debug-refresh-missiles').addEventListener('click', () => {
+    if (window.silos) {
+      window.silos.forEach(silo => {
+        if (silo.alive) {
+          silo.missiles = 10;
+          debugLog('Refreshed missiles for silo at: ' + silo.x);
+        }
+      });
+      updateMissileDisplay();
+    }
+  });
+}
+
+// After window load, initialize debug mode
+window.addEventListener('load', initDebugMode);
+
+// Expose debug functions globally
+window.debugLog = debugLog;
+window.updateDebugInfo = updateDebugInfo;
+
+// Game state constants
+const GAME_STATE = {
+  TITLE_SCREEN: 'title_screen',
+  PLAYING: 'playing',
+  GAME_OVER: 'game_over'
+};
+
+// Check for missile collisions with explosions
+function checkMissileExplosionCollisions() {
+  // Check if enemy missiles are hit by explosions
+  for (let i = 0; i < missiles.length; i++) {
+    const missile = missiles[i];
+    
+    // Skip missiles that are not enemies or already dead
+    if (!missile.alive || !missile.enemy) continue;
+    
+    // Check against all active explosions
+    for (let j = 0; j < explosions.length; j++) {
+      const explosion = explosions[j];
+      
+      // Skip dead explosions
+      if (!explosion.alive) continue;
+      
+      // Calculate distance between missile and explosion center
+      const dx = missile.x - explosion.x;
+      const dy = missile.y - explosion.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      // Check if missile is within explosion radius
+      if (distance <= explosion.radius) {
+        // Missile is hit by explosion
+        missile.alive = false;
+        
+        // Award points for destroying enemy missile
+        updateScore(25);
+        
+        // Create a floating text for points
+        createFloatingText(
+          missile.x,
+          missile.y, 
+          "+25",
+          "#FFFF00",
+          16,
+          1000
+        );
+        
+        // Play a sound for missile destroyed
+        playSound("explosion");
+        
+        // Create a smaller explosion at missile position
+        createExplosion(missile.x, missile.y, explosion.radius * 0.7);
+        
+        break; // This missile is already destroyed, no need to check other explosions
+      }
+    }
+  }
+}
+
+// Check for bonus target collisions with explosions
+function checkBonusTargetCollisions() {
+  // Check if bonus targets are hit by explosions
+  for (let i = 0; i < bonusTargets.length; i++) {
+    const target = bonusTargets[i];
+    
+    // Skip targets that are already dead
+    if (!target.alive) continue;
+    
+    // Check against all active explosions
+    for (let j = 0; j < explosions.length; j++) {
+      const explosion = explosions[j];
+      
+      // Skip dead explosions
+      if (!explosion.alive) continue;
+      
+      // Calculate distance between target and explosion center
+      const dx = target.x - explosion.x;
+      const dy = target.y - explosion.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      // Check if target is within explosion radius
+      if (distance <= explosion.radius + target.size) {
+        // Target is hit by explosion
+        target.alive = false;
+        
+        // Award points based on target type
+        const points = BONUS_TARGETS[target.type].points;
+        updateScore(points);
+        
+        // Create a floating text for points
+        createFloatingText(
+          target.x,
+          target.y, 
+          `+${points}`,
+          "#00FFFF",
+          20,
+          1500
+        );
+        
+        // Play the bonus target sound
+        playSound("bonusTarget");
+        
+        // Create a special explosion effect
+        const specialExplosion = createExplosion(target.x, target.y, target.size * 2);
+        if (specialExplosion) {
+          // Add special properties to this explosion for visual effect
+          specialExplosion.color = target.color;
+          specialExplosion.specialEffect = true;
+        }
+        
+        // Remove the target from the active array and return to pool
+        returnPooledObject(bonusTargetPool, target);
+        bonusTargets.splice(i, 1);
+        i--; // Adjust index since we removed an item
+        
+        break; // This target is already destroyed, no need to check other explosions
+      }
+    }
+  }
+}
+
+// Expose function to window for testing
+window.checkMissileExplosionCollisions = checkMissileExplosionCollisions;
+window.checkBonusTargetCollisions = checkBonusTargetCollisions;
+
+// Update and draw floating text objects
+function updateAndDrawFloatingTexts() {
+  const currentTime = performance.now();
+  
+  for (let i = floatingTexts.length - 1; i >= 0; i--) {
+    const floatingText = floatingTexts[i];
+    
+    // Skip if not alive
+    if (!floatingText.alive) continue;
+    
+    // Calculate how much of the animation has completed (0 to 1)
+    const elapsed = currentTime - floatingText.createdAt;
+    const progress = Math.min(elapsed / floatingText.duration, 1);
+    
+    // Update position based on velocity
+    floatingText.x += floatingText.velocity.x;
+    floatingText.y += floatingText.velocity.y;
+    
+    // Apply easing to slow down the movement over time
+    floatingText.velocity.y *= 0.95;
+    floatingText.velocity.x *= 0.98;
+    
+    // Reduce alpha based on progress (fade out)
+    floatingText.alpha = 1 - progress;
+    
+    // Scale effect (slightly grow then shrink)
+    if (progress < 0.3) {
+      floatingText.scale = 1 + progress * 0.5; // Grow to 1.15x
+    } else {
+      floatingText.scale = 1.15 - (progress - 0.3) * 0.25; // Shrink to 0.9x
+    }
+    
+    // Draw the floating text
+    context.save();
+    context.globalAlpha = floatingText.alpha;
+    context.font = `${Math.floor(floatingText.size * floatingText.scale)}px 'Press Start 2P', monospace`;
+    context.fillStyle = floatingText.color;
+    context.textAlign = 'center';
+    context.fillText(floatingText.text, floatingText.x, floatingText.y);
+    context.restore();
+    
+    // Remove if animation is complete and return to pool
+    if (progress >= 1) {
+      floatingText.alive = false;
+      floatingTexts.splice(i, 1);
+      returnPooledObject(floatingTextPool, floatingText);
+    }
+  }
+}
+
+// Expose function to window for testing
+window.updateAndDrawFloatingTexts = updateAndDrawFloatingTexts;
+
+// Sound Manager for improved audio handling
+const SoundManager = {
+  sounds: {},
+  muted: false,
+  
+  // Initialize sounds
+  init: function() {
+    // List of all game sounds
+    const soundFiles = [
+      'missile_launch',
+      'explosion',
+      'game_over',
+      'level_up',
+      'bonus_target',
+      'button_click',
+      'city_destroyed'
+    ];
+    
+    // Pre-load all sounds
+    soundFiles.forEach(sound => {
+      this.loadSound(sound);
+    });
+    
+    // Try to restore mute state from localStorage
+    const savedMute = localStorage.getItem('soundMuted');
+    if (savedMute !== null) {
+      this.muted = savedMute === 'true';
+      console.log("Sound mute state restored:", this.muted);
+    }
+    
+    return this;
+  },
+  
+  // Load a sound file
+  loadSound: function(name) {
+    // Try loading MP3 first
+    const sound = new Audio();
+    
+    // Set up error handler before setting source
+    sound.addEventListener('error', (e) => {
+      console.warn(`Error loading sound ${name}.mp3, trying WAV...`, e);
+      
+      // Try wav as fallback if mp3 fails
+      sound.src = `sounds/${name}.wav`;
+      
+      // Add another error handler for WAV fallback
+      sound.addEventListener('error', (wavError) => {
+        console.error(`Failed to load sound ${name}.wav as well:`, wavError);
+        
+        // Create a silent audio element as a last resort to prevent game from breaking
+        const silentAudio = new Audio();
+        silentAudio.volume = 0;
+        this.sounds[name] = silentAudio;
+      });
+    });
+    
+    // Set initial volume
+    sound.volume = 0.5;
+    
+    // Set source after attaching error listener
+    sound.src = `sounds/${name}.mp3`;
+    
+    // Store in sounds dictionary
+    this.sounds[name] = sound;
+    
+    // Attempt preloading
+    sound.load();
+    
+    return sound;
+  },
+  
+  // Play a sound
+  play: function(name) {
+    if (this.muted) return;
+    
+    const sound = this.sounds[name];
+    if (!sound) {
+      console.warn(`Sound ${name} not found. Attempting to load it.`);
+      const newSound = this.loadSound(name);
+      newSound.play().catch(err => {
+        console.error(`Failed to play sound ${name}:`, err);
+        // Silently fail - don't break the game for sound issues
+      });
+      return;
+    }
+    
+    // Reset sound to beginning if it's already playing
+    try {
+      sound.currentTime = 0;
+      sound.play().catch(err => {
+        console.error(`Failed to play sound ${name}:`, err);
+        // Silently fail - don't break the game for sound issues
+      });
+    } catch (error) {
+      console.error(`Error playing sound ${name}:`, error);
+      // Silently fail - don't break the game for sound issues
+    }
+  },
+  
+  // Toggle mute state
+  toggleMute: function() {
+    this.muted = !this.muted;
+    localStorage.setItem('soundMuted', this.muted);
+    return this.muted;
+  },
+  
+  // Set volume for all sounds
+  setVolume: function(volume) {
+    for (const key in this.sounds) {
+      this.sounds[key].volume = volume;
+    }
+  }
+};
+
+// Initialize sound manager
+document.addEventListener('DOMContentLoaded', () => {
+  SoundManager.init();
+  
+  // Update sound toggle button
+  const soundToggle = document.getElementById('sound-toggle');
+  const soundIcon = document.getElementById('sound-icon');
+  
+  if (soundToggle && soundIcon) {
+    // Update initial state
+    soundIcon.textContent = SoundManager.muted ? '🔇' : '🔊';
+    
+    // Add event listener
+    soundToggle.addEventListener('click', () => {
+      const isMuted = SoundManager.toggleMute();
+      soundIcon.textContent = isMuted ? '🔇' : '🔊';
+    });
+  }
+});
+
+// Replace existing playSound function with SoundManager version
+function playSound(name) {
+  SoundManager.play(name);
+}
+
+// Wallet connection status
+let walletConnected = false;
+let walletConnectionAttempted = false;
+let walletPrincipal = null;
+let ICP_FEE = 0.01; // Fee to play in ICP
+
+// Enhanced wallet connection function
+async function connectWallet() {
+  // If already connected, return success immediately
+  if (walletConnected && walletPrincipal) {
+    console.log("Wallet already connected");
+    return true;
+  }
+  
+  walletConnectionAttempted = true;
+  
+  try {
+    // Check if we have Plug wallet available
+    if (window.ic && window.ic.plug) {
+      console.log("Attempting to connect to Plug wallet...");
+      
+      // Get connection status
+      const connected = await window.ic.plug.isConnected();
+      
+      if (connected) {
+        console.log("Wallet already connected");
+        walletConnected = true;
+        
+        // Update UI
+        document.getElementById('wallet-button').textContent = 'Wallet Connected';
+        document.getElementById('wallet-button').disabled = true;
+        document.getElementById('start-button').disabled = false;
+        
+        // Get user principal
+        try {
+          const principal = await window.ic.plug.getPrincipal();
+          walletPrincipal = principal.toString();
+          console.log("User principal:", walletPrincipal);
+        } catch (principalError) {
+          console.warn("Error getting principal:", principalError);
+        }
+        
+        return true;
+      }
+      
+      // Request connection
+      const approvedConnection = await window.ic.plug.requestConnect({
+        whitelist: [], // No specific canisters needed for this demo
+        timeout: 30000 // 30 seconds to approve
+      });
+      
+      if (approvedConnection) {
+        console.log("Wallet connection approved");
+        walletConnected = true;
+        document.getElementById('wallet-button').textContent = 'Wallet Connected';
+        document.getElementById('wallet-button').disabled = true;
+        document.getElementById('start-button').disabled = false;
+        
+        // Get user principal
+        try {
+          const principal = await window.ic.plug.getPrincipal();
+          walletPrincipal = principal.toString();
+          console.log("User principal:", walletPrincipal);
+        } catch (principalError) {
+          console.warn("Error getting principal:", principalError);
+        }
+        
+        return true;
+      } else {
+        console.log("Wallet connection rejected");
+        document.getElementById('wallet-button').textContent = 'Connect Wallet';
+        document.getElementById('wallet-button').disabled = false;
+        return false;
+      }
+    } else {
+      console.log("Plug wallet not detected");
+      
+      // In debug mode, allow playing without wallet
+      if (isDebugMode) {
+        console.log("Debug mode enabled - allowing play without wallet");
+        walletConnected = true;
+        document.getElementById('wallet-button').textContent = 'Debug Mode (No Wallet)';
+        document.getElementById('start-button').disabled = false;
+        return true;
+      }
+      
+      document.getElementById('wallet-button').textContent = 'Wallet Not Found';
+      return false;
+    }
+  } catch (error) {
+    console.error("Error connecting wallet:", error);
+    document.getElementById('wallet-button').textContent = 'Connection Error';
+    
+    // In debug mode, allow playing despite errors
+    if (isDebugMode) {
+      console.log("Debug mode enabled - allowing play despite wallet error");
+      walletConnected = true;
+      document.getElementById('start-button').disabled = false;
+      return true;
+    }
+    
+    return false;
+  }
+}
+
+// Wallet payment processing
+async function processPayment() {
+  if (!walletConnected) {
+    console.log("Cannot process payment - wallet not connected");
+    return false;
+  }
+  
+  try {
+    if (window.ic && window.ic.plug) {
+      // Check if we're in mock mode - this is for testing purposes
+      if (window.ic.plug._isMock || window.ic.plug._isPartialMock || isDebugMode) {
+        console.log("Mock wallet detected or debug mode - simulating payment");
+        
+        // Show success message
+        const paymentMsg = document.createElement('div');
+        paymentMsg.className = 'payment-success';
+        paymentMsg.textContent = 'Payment Success (Demo Mode)';
+        document.body.appendChild(paymentMsg);
+        
+        // Remove after 2 seconds
+        setTimeout(() => {
+          if (paymentMsg.parentNode) {
+            paymentMsg.parentNode.removeChild(paymentMsg);
+          }
+        }, 2000);
+        
+        return true;
+      }
+      
+      // Process real payment
+      const amount = ICP_FEE; // Convert to bigint with 8 decimal places
+      
+      console.log(`Requesting payment of ${amount} ICP`);
+      
+      // Request transfer using Plug
+      const transferResult = await window.ic.plug.requestTransfer({
+        to: 'ryjl3-tyaaa-aaaaa-aaaba-cai', // Example canister ID - replace with real one
+        amount: Number(amount)
+      });
+      
+      console.log("Transfer result:", transferResult);
+      
+      if (transferResult) {
+        // Show success message
+        const paymentMsg = document.createElement('div');
+        paymentMsg.className = 'payment-success';
+        paymentMsg.textContent = 'Payment Successful!';
+        document.body.appendChild(paymentMsg);
+        
+        // Remove after 2 seconds
+        setTimeout(() => {
+          if (paymentMsg.parentNode) {
+            paymentMsg.parentNode.removeChild(paymentMsg);
+          }
+        }, 2000);
+        
+        return true;
+      } else {
+        console.error("Payment failed");
+        return false;
+      }
+    } else {
+      // Allow in debug mode
+      if (isDebugMode) {
+        console.log("Debug mode enabled - allowing play without payment");
+        return true;
+      }
+      
+      console.error("Wallet not available for payment");
+      return false;
+    }
+  } catch (error) {
+    console.error("Error processing payment:", error);
+    
+    // Allow in debug mode despite errors
+    if (isDebugMode) {
+      console.log("Debug mode enabled - allowing play despite payment error");
+      return true;
+    }
+    
+    return false;
+  }
+}
+
+// Game Over - restart button click
+document.getElementById('restart-button').addEventListener('click', async function() {
+  playSound('buttonClick');
+  
+  if (await WalletIntegration.processPayment()) {
+    restartGame();
+  }
+});
+
+// Function to create a floating text with dynamic animation
+function createFloatingText(x, y, text, color = '#ffffff', size = 16, duration = 1500) {
+  // Get floating text from pool or create new one
+  const floatingText = getPooledObject(floatingTextPool, createEmptyFloatingText);
+  
+  // Position and basic properties
+  floatingText.x = x;
+  floatingText.y = y;
+  floatingText.text = text;
+  floatingText.color = color;
+  floatingText.size = size;
+  
+  // Animation properties
+  floatingText.velocity = {
+    x: (Math.random() - 0.5) * 2, // Add sideways movement
+    y: -3 - Math.random() * 2     // Upward movement with some randomness
+  };
+  
+  floatingText.alpha = 1.0;
+  floatingText.scale = 1.0;
+  floatingText.createdAt = performance.now();
+  floatingText.duration = duration + Math.random() * 500; // Add some randomness to duration
+  floatingText.alive = true;
+  
+  // Add to active array
+  floatingTexts.push(floatingText);
+  
+  return floatingText;
+}
+
+// Keyboard controls
+document.addEventListener('keydown', function(event) {
+  // Arrow keys for silo selection
+  if (currentState === GAME_STATES.PLAYING) {
+    if (event.key === 'ArrowLeft') {
+      selectedSilo = 0;
+    } else if (event.key === 'ArrowRight') {
+      selectedSilo = 2;
+    } else if (event.key === 'ArrowDown') {
+      selectedSilo = 1;
+    // Space to fire
+    } else if (event.key === ' ') {
+      fireMissile(selectedSilo);
+    } else if (event.key === 'Escape' || event.key === 'p' || event.key === 'P') {
+      // Pause the game
+      updateGameState(GAME_STATES.PAUSED);
+    }
+  } else if (currentState === GAME_STATES.PAUSED) {
+    if (event.key === 'Escape' || event.key === 'p' || event.key === 'P') {
+      // Resume the game
+      updateGameState(GAME_STATES.PLAYING);
+    }
+  } else if (currentState === GAME_STATES.TITLE) {
+    // Any key to start from title screen
+    updateGameState(GAME_STATES.PLAYING);
+  } else if (currentState === GAME_STATES.GAME_OVER) {
+    // Any key to restart after game over
+    restartGame();
+  }
+});
+
+// Function to update and draw all floating texts
+function updateAndDrawFloatingTexts() {
+  const currentTime = performance.now();
+  
+  for (let i = floatingTexts.length - 1; i >= 0; i--) {
+    const floatingText = floatingTexts[i];
+    
+    // Skip if not alive
+    if (!floatingText.alive) continue;
+    
+    // Calculate how much of the animation has completed (0 to 1)
+    const elapsed = currentTime - floatingText.createdAt;
+    const progress = Math.min(elapsed / floatingText.duration, 1);
+    
+    // Update position based on velocity
+    floatingText.x += floatingText.velocity.x;
+    floatingText.y += floatingText.velocity.y;
+    
+    // Apply easing to slow down the movement over time
+    floatingText.velocity.y *= 0.95;
+    floatingText.velocity.x *= 0.98;
+    
+    // Reduce alpha based on progress (fade out)
+    floatingText.alpha = 1 - progress;
+    
+    // Scale effect (slightly grow then shrink)
+    if (progress < 0.3) {
+      floatingText.scale = 1 + progress * 0.5; // Grow to 1.15x
+    } else {
+      floatingText.scale = 1.15 - (progress - 0.3) * 0.25; // Shrink to 0.9x
+    }
+    
+    // Draw the floating text
+    context.save();
+    context.globalAlpha = floatingText.alpha;
+    context.font = `${Math.floor(floatingText.size * floatingText.scale)}px 'Press Start 2P', monospace`;
+    context.fillStyle = floatingText.color;
+    context.textAlign = 'center';
+    context.fillText(floatingText.text, floatingText.x, floatingText.y);
+    context.restore();
+    
+    // Remove if animation is complete and return to pool
+    if (progress >= 1) {
+      floatingText.alive = false;
+      floatingTexts.splice(i, 1);
+      returnPooledObject(floatingTextPool, floatingText);
+    }
+  }
 }
 </script>
 </body>

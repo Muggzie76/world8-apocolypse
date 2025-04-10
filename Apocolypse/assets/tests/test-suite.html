@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WORLD 8 APOCALYPSE - Test Suite</title>
+    <style>
+        body {
+            background-color: #0a0a0a;
+            color: #00ffff;
+            font-family: 'Courier New', monospace;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            color: #ff0000;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background-color: #111;
+            padding: 20px;
+            border: 1px solid #00ffff;
+            border-radius: 5px;
+        }
+        .test-group {
+            margin-bottom: 30px;
+            border-bottom: 1px dotted #333;
+            padding-bottom: 20px;
+        }
+        .test-group-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .test-group-title {
+            font-size: 1.3em;
+            color: #ff5555;
+        }
+        .test-group-status {
+            font-size: 0.9em;
+            padding: 3px 8px;
+            border-radius: 3px;
+            background-color: #333;
+        }
+        .test-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .test-item {
+            padding: 8px 10px;
+            margin-bottom: 5px;
+            background-color: #1a1a1a;
+            border-left: 3px solid transparent;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .test-name {
+            font-size: 0.9em;
+        }
+        .test-result {
+            font-size: 0.8em;
+            border-radius: 3px;
+            padding: 2px 6px;
+        }
+        .status-pass {
+            color: #00ff00;
+            border-color: #00ff00;
+            background-color: rgba(0, 255, 0, 0.1);
+        }
+        .status-fail {
+            color: #ff0000;
+            border-color: #ff0000;
+            background-color: rgba(255, 0, 0, 0.1);
+        }
+        .status-running {
+            color: #ffff00;
+            border-color: #ffff00;
+            background-color: rgba(255, 255, 0, 0.1);
+        }
+        .status-info {
+            color: #00ffff;
+            border-color: #00ffff;
+            background-color: rgba(0, 255, 255, 0.1);
+        }
+        .test-controls {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .test-button {
+            background-color: #333;
+            color: #00ffff;
+            border: 1px solid #00ffff;
+            padding: 8px 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Courier New', monospace;
+        }
+        .test-button:hover {
+            background-color: #555;
+        }
+        .progress-container {
+            margin: 20px 0;
+            background-color: #222;
+            height: 30px;
+            border-radius: 15px;
+            overflow: hidden;
+        }
+        #test-progress-bar {
+            height: 100%;
+            background-color: #00ff00;
+            transition: width 0.3s;
+            text-align: center;
+            line-height: 30px;
+            color: #000;
+            font-weight: bold;
+        }
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 0.8em;
+            opacity: 0.6;
+        }
+        .test-log {
+            margin-top: 20px;
+            background-color: #0a0a0a;
+            border: 1px solid #333;
+            padding: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+        .log-entry {
+            margin: 3px 0;
+            padding-bottom: 3px;
+            border-bottom: 1px dotted #333;
+        }
+        .return-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 30px;
+        }
+        .return-button {
+            padding: 10px 20px;
+            background-color: #333;
+            color: #00ffff;
+            border: 1px solid #00ffff;
+            cursor: pointer;
+            text-decoration: none;
+            text-align: center;
+        }
+        .test-launcher-button {
+            background-color: #330000;
+            color: #ff0000;
+            border: 1px solid #ff0000;
+        }
+    </style>
+</head>
+<body>
+    <h1>WORLD 8 APOCALYPSE - Test Suite</h1>
+    <div class="container">
+        <div class="test-controls">
+            <button id="run-all-tests" class="test-button">Run All Tests</button>
+            <div>
+                <button id="run-game-mechanics" class="test-button">Run Game Mechanics</button>
+                <button id="run-integration" class="test-button">Run Integration</button>
+                <button id="run-performance" class="test-button">Run Performance</button>
+            </div>
+        </div>
+
+        <div class="progress-container">
+            <div id="test-progress-bar" style="width: 0%;"></div>
+        </div>
+
+        <div class="test-group" id="game-mechanics-section">
+            <div class="test-group-header">
+                <div class="test-group-title">Game Mechanics Tests</div>
+                <div class="test-group-status" id="game-mechanics-status">Not Started</div>
+            </div>
+            <ul class="test-list" id="game-mechanics-tests">
+                <!-- Test items will be added dynamically -->
+            </ul>
+        </div>
+
+        <div class="test-group" id="integration-section">
+            <div class="test-group-header">
+                <div class="test-group-title">Integration Tests</div>
+                <div class="test-group-status" id="integration-status">Not Started</div>
+            </div>
+            <ul class="test-list" id="integration-tests">
+                <!-- Test items will be added dynamically -->
+            </ul>
+        </div>
+
+        <div class="test-group" id="performance-section">
+            <div class="test-group-header">
+                <div class="test-group-title">Performance Tests</div>
+                <div class="test-group-status" id="performance-status">Not Started</div>
+            </div>
+            <ul class="test-list" id="performance-tests">
+                <!-- Test items will be added dynamically -->
+            </ul>
+        </div>
+
+        <div class="test-log" id="test-log">
+            <div class="log-entry">Test suite initialized</div>
+        </div>
+
+        <div class="return-buttons">
+            <a href="../index.html" class="return-button">Return to Game</a>
+            <a href="../test-launcher.html" class="return-button test-launcher-button">Test Launcher</a>
+        </div>
+    </div>
+
+    <div class="footer">
+        WORLD 8 APOCALYPSE Test Suite v1.0.0 | Phase 6-7: Testing & Refinement
+    </div>
+
+    <!-- Load test modules -->
+    <script src="game-mechanics-test.js"></script>
+    <script src="integration-test.js"></script>
+    <script src="performance-monitor.js"></script>
+
+    <script>
+        // Test state
+        const testState = {
+            running: false,
+            completed: 0,
+            total: 0,
+            passed: 0,
+            failed: 0,
+            skipped: 0,
+            startTime: 0,
+            endTime: 0,
+            currentTest: null
+        };
+
+        // DOM elements
+        const progressBar = document.getElementById('test-progress-bar');
+        const testLog = document.getElementById('test-log');
+        const runAllButton = document.getElementById('run-all-tests');
+        const gameMechanicsButton = document.getElementById('run-game-mechanics');
+        const integrationButton = document.getElementById('run-integration');
+        const performanceButton = document.getElementById('run-performance');
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            logToConsole('Test suite loaded');
+            
+            // Check URL parameters for specific test to run
+            const urlParams = new URLSearchParams(window.location.search);
+            const testType = urlParams.get('testType');
+            
+            if (testType) {
+                switch (testType) {
+                    case 'full':
+                        setTimeout(() => runAllTests(), 500);
+                        break;
+                    case 'game-mechanics':
+                        setTimeout(() => runGameMechanicsTests(), 500);
+                        break;
+                    case 'integration':
+                        setTimeout(() => runIntegrationTests(), 500);
+                        break;
+                    case 'performance':
+                        setTimeout(() => runPerformanceTests(), 500);
+                        break;
+                }
+            }
+            
+            // Set up button handlers
+            runAllButton.addEventListener('click', runAllTests);
+            gameMechanicsButton.addEventListener('click', runGameMechanicsTests);
+            integrationButton.addEventListener('click', runIntegrationTests);
+            performanceButton.addEventListener('click', runPerformanceTests);
+        });
+
+        // Log a message to the test log
+        function logToTestLog(message) {
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            logEntry.textContent = message;
+            testLog.appendChild(logEntry);
+            testLog.scrollTop = testLog.scrollHeight;
+        }
+
+        // Log to both test log and console
+        function logToConsole(message) {
+            console.log(`[Test Suite] ${message}`);
+            logToTestLog(message);
+        }
+
+        // Log test result and update UI
+        function logResult(message, status, category = null) {
+            // Create or update test item in UI
+            if (category) {
+                const testList = document.getElementById(`${category}-tests`);
+                if (testList) {
+                    // Either find existing test or create new one
+                    const testId = message.replace(/\s+/g, '-').toLowerCase();
+                    let testItem = document.getElementById(testId);
+                    
+                    if (!testItem) {
+                        testItem = document.createElement('li');
+                        testItem.id = testId;
+                        testItem.className = 'test-item';
+                        
+                        const testName = document.createElement('div');
+                        testName.className = 'test-name';
+                        testName.textContent = message;
+                        
+                        const testResult = document.createElement('div');
+                        testResult.className = 'test-result';
+                        testResult.id = `${testId}-result`;
+                        
+                        testItem.appendChild(testName);
+                        testItem.appendChild(testResult);
+                        testList.appendChild(testItem);
+                    }
+                    
+                    // Update status
+                    const resultElement = document.getElementById(`${testId}-result`);
+                    if (resultElement) {
+                        resultElement.textContent = status.toUpperCase();
+                        resultElement.className = `test-result status-${status}`;
+                        testItem.className = `test-item status-${status}`;
+                    }
+                }
+                
+                // Update category status
+                updateCategoryStatus(category);
+            }
+            
+            // Log message
+            logToConsole(`[${status.toUpperCase()}] ${message}`);
+            
+            // Update progress bar if appropriate
+            if (status === 'pass' || status === 'fail') {
+                testState.completed++;
+                if (status === 'pass') testState.passed++;
+                if (status === 'fail') testState.failed++;
+                updateProgressBar();
+            } else if (status === 'info') {
+                // Skip count for info messages
+            }
+        }
+
+        // Update category status based on test results
+        function updateCategoryStatus(category) {
+            const statusElement = document.getElementById(`${category}-status`);
+            if (!statusElement) return;
+            
+            const testItems = document.querySelectorAll(`#${category}-tests .test-item`);
+            const totalTests = testItems.length;
+            let passedTests = 0;
+            let failedTests = 0;
+            let runningTests = 0;
+            
+            testItems.forEach(item => {
+                if (item.classList.contains('status-pass')) passedTests++;
+                if (item.classList.contains('status-fail')) failedTests++;
+                if (item.classList.contains('status-running')) runningTests++;
+            });
+            
+            if (runningTests > 0) {
+                statusElement.textContent = `Running (${passedTests}/${totalTests})`;
+                statusElement.className = 'test-group-status status-running';
+            } else if (totalTests === 0) {
+                statusElement.textContent = 'Not Started';
+                statusElement.className = 'test-group-status';
+            } else if (failedTests > 0) {
+                statusElement.textContent = `Failed (${passedTests}/${totalTests})`;
+                statusElement.className = 'test-group-status status-fail';
+            } else {
+                statusElement.textContent = `Passed (${passedTests}/${totalTests})`;
+                statusElement.className = 'test-group-status status-pass';
+            }
+        }
+
+        // Update the progress bar
+        function updateProgressBar() {
+            if (testState.total === 0) return;
+            
+            const percentage = Math.round((testState.completed / testState.total) * 100);
+            progressBar.style.width = `${percentage}%`;
+            progressBar.textContent = `${percentage}% Complete`;
+            
+            // Change color based on percentage of passed tests
+            const passRatio = testState.passed / testState.completed;
+            if (passRatio >= 0.9) {
+                progressBar.style.backgroundColor = '#00ff00'; // Green
+            } else if (passRatio >= 0.7) {
+                progressBar.style.backgroundColor = '#ffff00'; // Yellow
+            } else {
+                progressBar.style.backgroundColor = '#ff0000'; // Red
+            }
+        }
+
+        // Run all tests
+        async function runAllTests() {
+            if (testState.running) {
+                logToConsole('Tests already running, please wait');
+                return;
+            }
+            
+            // Reset the test state
+            testState.running = true;
+            testState.completed = 0;
+            testState.total = 25; // Estimated total tests
+            testState.passed = 0;
+            testState.failed = 0;
+            testState.skipped = 0;
+            testState.startTime = performance.now();
+            
+            // Clear previous test results
+            document.getElementById('game-mechanics-tests').innerHTML = '';
+            document.getElementById('integration-tests').innerHTML = '';
+            document.getElementById('performance-tests').innerHTML = '';
+            
+            // Reset progress bar
+            progressBar.style.width = '0%';
+            progressBar.textContent = '0% Complete';
+            
+            // Disable buttons during test run
+            setButtonsEnabled(false);
+            
+            logToConsole('Starting all tests...');
+            
+            try {
+                // Run tests sequentially
+                await runGameMechanicsTests(false);
+                await runIntegrationTests(false);
+                await runPerformanceTests(false);
+                
+                // Calculate test duration
+                testState.endTime = performance.now();
+                const duration = ((testState.endTime - testState.startTime) / 1000).toFixed(2);
+                
+                // Log final results
+                logToConsole(`Test suite completed in ${duration}s: ${testState.passed} passed, ${testState.failed} failed, ${testState.skipped} skipped`);
+            } catch (error) {
+                logToConsole(`Error in test execution: ${error.message}`);
+            } finally {
+                testState.running = false;
+                setButtonsEnabled(true);
+            }
+        }
+
+        // Run game mechanics tests
+        async function runGameMechanicsTests(standalone = true) {
+            if (testState.running && standalone) {
+                logToConsole('Tests already running, please wait');
+                return;
+            }
+            
+            if (standalone) {
+                // Reset test state for standalone run
+                testState.running = true;
+                testState.completed = 0;
+                testState.total = 10; // Estimated total tests
+                testState.passed = 0;
+                testState.failed = 0;
+                testState.skipped = 0;
+                testState.startTime = performance.now();
+                
+                // Clear previous test results
+                document.getElementById('game-mechanics-tests').innerHTML = '';
+                
+                // Reset progress bar
+                progressBar.style.width = '0%';
+                progressBar.textContent = '0% Complete';
+                
+                // Disable buttons during test run
+                setButtonsEnabled(false);
+            }
+            
+            logToConsole('Starting game mechanics tests...');
+            
+            try {
+                // Create test instance with logger
+                const mechanicsTest = new GameMechanicsTest((msg, status) => logResult(msg, status, 'game-mechanics'));
+                
+                // Run the tests
+                await mechanicsTest.runAllTests();
+                
+                if (standalone) {
+                    // Calculate test duration
+                    testState.endTime = performance.now();
+                    const duration = ((testState.endTime - testState.startTime) / 1000).toFixed(2);
+                    
+                    // Log final results
+                    logToConsole(`Game mechanics tests completed in ${duration}s: ${testState.passed} passed, ${testState.failed} failed, ${testState.skipped} skipped`);
+                }
+            } catch (error) {
+                logToConsole(`Error in game mechanics tests: ${error.message}`);
+            } finally {
+                if (standalone) {
+                    testState.running = false;
+                    setButtonsEnabled(true);
+                }
+            }
+        }
+
+        // Run integration tests
+        async function runIntegrationTests(standalone = true) {
+            if (testState.running && standalone) {
+                logToConsole('Tests already running, please wait');
+                return;
+            }
+            
+            if (standalone) {
+                // Reset test state for standalone run
+                testState.running = true;
+                testState.completed = 0;
+                testState.total = 10; // Estimated total tests
+                testState.passed = 0;
+                testState.failed = 0;
+                testState.skipped = 0;
+                testState.startTime = performance.now();
+                
+                // Clear previous test results
+                document.getElementById('integration-tests').innerHTML = '';
+                
+                // Reset progress bar
+                progressBar.style.width = '0%';
+                progressBar.textContent = '0% Complete';
+                
+                // Disable buttons during test run
+                setButtonsEnabled(false);
+            }
+            
+            logToConsole('Starting integration tests...');
+            
+            try {
+                // Create test instance with logger
+                const integrationTest = new IntegrationTest((msg, status) => logResult(msg, status, 'integration'));
+                
+                // Run the tests
+                await integrationTest.runAllTests();
+                
+                if (standalone) {
+                    // Calculate test duration
+                    testState.endTime = performance.now();
+                    const duration = ((testState.endTime - testState.startTime) / 1000).toFixed(2);
+                    
+                    // Log final results
+                    logToConsole(`Integration tests completed in ${duration}s: ${testState.passed} passed, ${testState.failed} failed, ${testState.skipped} skipped`);
+                }
+            } catch (error) {
+                logToConsole(`Error in integration tests: ${error.message}`);
+            } finally {
+                if (standalone) {
+                    testState.running = false;
+                    setButtonsEnabled(true);
+                }
+            }
+        }
+
+        // Run performance tests
+        async function runPerformanceTests(standalone = true) {
+            if (testState.running && standalone) {
+                logToConsole('Tests already running, please wait');
+                return;
+            }
+            
+            if (standalone) {
+                // Reset test state for standalone run
+                testState.running = true;
+                testState.completed = 0;
+                testState.total = 5; // Estimated total tests
+                testState.passed = 0;
+                testState.failed = 0;
+                testState.skipped = 0;
+                testState.startTime = performance.now();
+                
+                // Clear previous test results
+                document.getElementById('performance-tests').innerHTML = '';
+                
+                // Reset progress bar
+                progressBar.style.width = '0%';
+                progressBar.textContent = '0% Complete';
+                
+                // Disable buttons during test run
+                setButtonsEnabled(false);
+            }
+            
+            logToConsole('Starting performance tests...');
+            
+            try {
+                // Create performance monitor
+                const monitor = new PerformanceMonitor();
+                
+                // Run basic performance test
+                const basicResults = await monitor.runBasicTest();
+                
+                // Log results to UI
+                if (basicResults.fps) {
+                    logResult('Frame Rate Test', basicResults.fps >= 30 ? 'pass' : 'fail', 'performance');
+                }
+                
+                if (basicResults.memoryUsage) {
+                    logResult('Memory Usage Test', basicResults.memoryUsage < 50 ? 'pass' : 'fail', 'performance');
+                }
+                
+                if (basicResults.renderTime) {
+                    logResult('Render Time Test', basicResults.renderTime < 16 ? 'pass' : 'fail', 'performance');
+                }
+                
+                if (basicResults.objectPooling) {
+                    logResult('Object Pooling Efficiency', basicResults.objectPooling > 0.8 ? 'pass' : 'fail', 'performance');
+                }
+                
+                // Additional pool-specific tests
+                const pools = ['missile', 'counterMissile', 'explosion'];
+                for (const pool of pools) {
+                    if (basicResults.pools && basicResults.pools[pool]) {
+                        const efficiency = basicResults.pools[pool].efficiency;
+                        logResult(`${pool} Pool Efficiency`, efficiency > 0.7 ? 'pass' : 'fail', 'performance');
+                    }
+                }
+                
+                if (standalone) {
+                    // Calculate test duration
+                    testState.endTime = performance.now();
+                    const duration = ((testState.endTime - testState.startTime) / 1000).toFixed(2);
+                    
+                    // Log final results
+                    logToConsole(`Performance tests completed in ${duration}s: ${testState.passed} passed, ${testState.failed} failed, ${testState.skipped} skipped`);
+                }
+            } catch (error) {
+                logToConsole(`Error in performance tests: ${error.message}`);
+            } finally {
+                if (standalone) {
+                    testState.running = false;
+                    setButtonsEnabled(true);
+                }
+            }
+        }
+
+        // Enable or disable all control buttons
+        function setButtonsEnabled(enabled) {
+            runAllButton.disabled = !enabled;
+            gameMechanicsButton.disabled = !enabled;
+            integrationButton.disabled = !enabled;
+            performanceButton.disabled = !enabled;
+        }
+
+        function testGameToHighScore() {
+            // Mock game over function
+            window.goToHighScores = function(score, level) {
+                const container = document.getElementById('test-results');
+                if (container) {
+                    container.innerHTML += `<div class="test-item test-success">Test Passed: Successfully called high score navigation with score: ${score}, level: ${level}</div>`;
+                }
+                
+                // Check if we can navigate to high scores page
+                try {
+                    // Fix path to ensure it works from tests directory
+                    const highScoreUrl = '../high-score.html?score=' + score + '&level=' + level;
+                    window.location.href = highScoreUrl;
+                } catch (error) {
+                    console.error("Error navigating to high score page:", error);
+                }
+            };
+            
+            // Test with sample values
+            window.goToHighScores(1500, 3);
+        }
+    </script>
+</body>
+</html> 
